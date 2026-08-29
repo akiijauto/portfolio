@@ -1,0 +1,92 @@
+body {
+  font-family: "Hiragino Sans", "Meiryo", sans-serif;
+  background: #f5f5f7;
+  margin: 0;
+  padding: 40px 16px;
+}
+
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+  background: white;
+  padding: 32px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+h1 {
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+
+label {
+  display: block;
+  margin-top: 16px;
+  font-size: 14px;
+  color: #333;
+}
+
+textarea, select {
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-family: monospace;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+}
+
+button {
+  margin-top: 24px;
+  padding: 12px 20px;
+  background: #2d6cdf;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+button:disabled {
+  background: #9fb6e0;
+  cursor: not-allowed;
+}
+
+.loading {
+  margin-top: 10px;
+  color: #2d6cdf;
+  font-size: 14px;
+}
+
+.flash {
+  list-style: none;
+  padding: 0;
+}
+
+.flash-error {
+  color: #c0392b;
+}
+
+.toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.toolbar button {
+  margin-top: 0;
+}

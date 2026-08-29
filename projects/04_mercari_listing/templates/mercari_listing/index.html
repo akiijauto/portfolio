@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>メルカリ出品文生成ツール</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <h1>メルカリ出品文生成ツール</h1>
+  <p>商品情報を入力するだけで売れる出品文・タイトル・推奨価格を自動生成します</p>
+</header>
+
+<div class="container">
+  <div class="form-box">
+    <h2>商品情報を入力</h2>
+    <div class="field">
+      <label>商品名<span class="req">*</span></label>
+      <input type="text" id="name" placeholder="例: iPhone 15 Pro 256GB ブラック">
+    </div>
+    <div class="field">
+      <label>商品の状態<span class="req">*</span></label>
+      <select id="condition">
+        <option value="">-- 選択してください --</option>
+        {% for c in conditions %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label>カテゴリ（省略可）</label>
+      <input type="text" id="category" placeholder="例: スマートフォン・タブレット">
+      <div class="hint">省略するとAIが自動判定します</div>
+    </div>
+    <div class="field">
+      <label>特徴・付属品・補足（省略可）</label>
+      <textarea id="features" placeholder="例: 純正ケース・充電ケーブル付属、画面に小傷あり"></textarea>
+    </div>
+    <button class="btn" id="gen-btn" onclick="doGenerate()">出品文を生成する</button>
+    <div class="progress" id="progress">AIが出品文を作成中です… しばらくお待ちください</div>
+    <div class="error-box" id="error-box"></div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="result-actions">
+      <button class="btn-secondary" onclick="downloadListing()">💾 出品文をダウンロード</button>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-label label-title">タイトル</span><button class="copy-btn" onclick="copyEl('title-text')">コピー</button></div>
+      <div class="title-text" id="title-text"></div>
+      <div class="title-len"  id="title-len"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-label label-desc">商品説明文</span><button class="copy-btn" onclick="copyEl('desc-text')">コピー</button></div>
+      <div class="desc-text" id="desc-text"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-label label-price">推奨価格・カテゴリ</span></div>
+      <div class="price-row">
+        <div class="price-item"><div class="label">最低価格</div><div><span class="value" id="price-min"></span><span class="unit"> 円</span></div></div>
+        <div class="price-arrow">〜</div>
+        <div class="price-item"><div class="label">最高価格</div><div><span class="value" id="price-max"></span><span class="unit"> 円</span></div></div>
+      </div>
+      <div class="category-tag" id="category-tag"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-label label-tips">売るためのコツ</span></div>
+      <ul class="tips-list" id="tips-list"></ul>
+    </div>
+    <div class="ai-note">※ AIが生成した出品文の下書きです。出品前に内容をご確認・編集してください。</div>
+  </div>
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

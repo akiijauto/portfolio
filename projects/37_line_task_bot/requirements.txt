@@ -1,0 +1,9 @@
+Flask
+Flask-SQLAlchemy
+python-dotenv
+gunicorn
+line-bot-sdk
+apscheduler
+pytz
+google-genai
+anthropic

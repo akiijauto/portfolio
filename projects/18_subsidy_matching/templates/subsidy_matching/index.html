@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>補助金マッチング＆事業計画ドラフト生成</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <h1>補助金・助成金マッチング＆事業計画ドラフト生成</h1>
+  <p>事業内容と地域から該当する補助金・助成金を検索し、適合度診断と事業計画書のドラフト作成までを一気通貫でサポート</p>
+</header>
+
+<nav class="tab-nav">
+  <div class="tab active" onclick="switchTab('search')">① 補助金・助成金検索</div>
+  <div class="tab"        onclick="switchTab('match')">② 適合判定</div>
+  <div class="tab"        onclick="switchTab('plan')">③ 事業計画ドラフト生成</div>
+</nav>
+
+<div class="container">
+
+  <!-- ① 検索 -->
+  <div class="tab-content active" id="tab-search">
+    <div class="box">
+      <h2>キーワード・地域から検索（出典: jGrants 補助金・助成金API）</h2>
+      <div class="form-grid">
+        <div class="full">
+          <label>事業内容・キーワード <span class="req">必須</span></label>
+          <input type="text" id="in-keyword" placeholder="例: 飲食店 設備導入 / 店舗改装 / IT導入" maxlength="100">
+        </div>
+        <div>
+          <label>地域（都道府県）</label>
+          <select id="in-prefecture">
+            <option value="">指定なし（全国対象も含む）</option>
+            {% for p in prefectures %}
+            <option value="{{ p }}">{{ p }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>受付状況</label>
+          <div class="goal-grid">
+            <label class="goal-chip">
+              <input type="checkbox" id="in-only-open" checked>
+              <span>現在募集中のみ表示</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="search-btn" onclick="doSearch()">🔍 補助金・助成金を検索</button>
+      </div>
+      <div class="progress-wrap" id="search-progress" style="display:none;">
+        <div class="progress-bar"><div class="progress-fill" id="search-progress-fill"></div></div>
+        <div class="progress-text">jGrants APIから検索中…</div>
+      </div>
+      <div class="error-box" id="search-error"></div>
+    </div>
+
+    <div id="search-empty" class="box">
+      <div class="empty">キーワードを入力して検索してください</div>
+    </div>
+    <div id="search-results"></div>
+  </div>
+
+  <!-- ② 適合判定 -->
+  <div class="tab-content" id="tab-match">
+    <div class="box" id="match-selected-box" style="display:none;">
+      <h2>選択中の補助金・助成金</h2>
+      <div class="selected-subsidy" id="match-selected-info"></div>
+    </div>
+    <div class="box" id="match-none-box">
+      <div class="empty">①タブの検索結果から「この補助金で診断する」を選択してください</div>
+    </div>
+
+    <div class="box" id="match-form-box" style="display:none;">
+      <h2>事業内容を入力して適合度を診断</h2>
+      <div class="form-grid">
+        <div class="full">
+          <label>事業内容（業種・取扱商品・規模・実施したいこと など） <span class="req">必須</span></label>
+          <textarea id="match-business-desc" rows="5" placeholder="例: 東京都内で個人経営のカフェを運営。客席の分煙環境を整備し、喫煙専用室を新設したい。従業員5名、客席面積80㎡。" maxlength="1500"></textarea>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="match-btn" onclick="doMatch()">🤖 適合度を診断する</button>
+      </div>
+      <div class="progress-wrap" id="match-progress" style="display:none;">
+        <div class="progress-bar"><div class="progress-fill" id="match-progress-fill"></div></div>
+        <div class="progress-text">AIが適合度を診断中…</div>
+      </div>
+      <div class="error-box" id="match-error"></div>
+    </div>
+
+    <div class="box" id="match-result-box" style="display:none;">
+      <div class="card-header">
+        <h2>適合度診断結果</h2>
+      </div>
+      <div id="match-result"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="goToPlan()">③ この内容で事業計画ドラフトを作成 →</button>
+      </div>
+      <div class="ai-note">※ AIによる診断結果は参考情報です。正式な申請要件は必ず募集要項本文をご確認ください。</div>
+    </div>
+  </div>
+
+  <!-- ③ 事業計画ドラフト生成 -->
+  <div class="tab-content" id="tab-plan">
+    <div class="box" id="plan-selected-box" style="display:none;">
+      <h2>対象の補助金・助成金</h2>
+      <div class="selected-subsidy" id="plan-selected-info"></div>
+    </div>
+    <div class="box" id="plan-none-box">
+      <div class="empty">①タブの検索結果から補助金を選択してください</div>
+    </div>
+
+    <div class="box" id="plan-form-box" style="display:none;">
+      <h2>事業計画ドラフトを生成</h2>
+      <div class="form-grid">
+        <div class="full">
+          <label>事業内容 <span class="req">必須</span></label>
+          <textarea id="plan-business-desc" rows="5" placeholder="例: 東京都内で個人経営のカフェを運営。客席の分煙環境を整備し、喫煙専用室を新設したい。従業員5名、客席面積80㎡。" maxlength="1500"></textarea>
+        </div>
+        <div class="full">
+          <label>事業計画で特に重視したい点（任意）</label>
+          <textarea id="plan-focus" rows="2" placeholder="例: 訪日外国人観光客の受け入れ強化につながる点を強調したい" maxlength="500"></textarea>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="plan-btn" onclick="doPlan()">📝 事業計画ドラフトを生成</button>
+      </div>
+      <div class="progress-wrap" id="plan-progress" style="display:none;">
+        <div class="progress-bar"><div class="progress-fill" id="plan-progress-fill"></div></div>
+        <div class="progress-text">AIが事業計画ドラフトを作成中…</div>
+      </div>
+      <div class="error-box" id="plan-error"></div>
+    </div>
+
+    <div class="box" id="plan-result-box" style="display:none;">
+      <div class="card-header">
+        <h2>事業計画書ドラフト</h2>
+        <div class="result-actions">
+          <button class="btn btn-sm btn-copy-all" onclick="copyPlan()">📋 コピー</button>
+          <button class="btn btn-sm btn-copy-all" onclick="downloadPlan()">💾 ダウンロード</button>
+        </div>
+      </div>
+      <div id="plan-result"></div>
+      <div class="ai-note">※ AIが生成した事業計画のドラフトです。提出前に内容を確認・編集し、募集要項の指定フォーマットに合わせてください。</div>
+    </div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

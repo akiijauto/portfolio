@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>SEO記事生成ツール</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <h1>SEO記事生成ツール</h1>
+  <p>キーワード → アウトライン確認 → 本文一括生成。自分のブログ・受託案件に即活用</p>
+</header>
+
+<div class="hero-stats">
+  <div class="hero-stat">
+    <div class="hero-num">3<span class="hero-unit">分</span></div>
+    <div class="hero-label">記事完成まで</div>
+  </div>
+  <div class="hero-divider"></div>
+  <div class="hero-stat hero-stat-accent">
+    <div class="hero-num">2<span class="hero-unit">ステップ</span></div>
+    <div class="hero-label">アウトライン確認 → 一括生成</div>
+  </div>
+  <div class="hero-divider"></div>
+  <div class="hero-stat">
+    <div class="hero-num">4<span class="hero-unit">種類</span></div>
+    <div class="hero-label">解説/ハウツー/まとめ/事例</div>
+  </div>
+</div>
+
+<nav class="tab-nav">
+  <div class="tab active" onclick="switchTab('settings')">① キーワード・設定</div>
+  <div class="tab"        onclick="switchTab('outline')">② 記事構成</div>
+  <div class="tab"        onclick="switchTab('article')">③ 記事本文</div>
+</nav>
+
+<div class="container">
+
+  <!-- ① 設定 -->
+  <div class="tab-content active" id="tab-settings">
+    <div class="box">
+      <h2>記事の基本設定</h2>
+      <div class="form-grid-2">
+        <div class="full-col">
+          <label>ターゲットキーワード <span class="req">必須</span></label>
+          <input type="text" id="keyword" placeholder="例: 業務自動化 Python 中小企業" maxlength="200">
+        </div>
+        <div>
+          <label>記事タイプ</label>
+          <select id="article_type">
+            {% for t in article_types %}<option>{{ t }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>文体・トーン</label>
+          <select id="tone">
+            {% for t in tones %}<option>{{ t }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label>目標文字数</label>
+          <select id="target_chars">
+            <option value="1000">1,000文字（短め）</option>
+            <option value="2000" selected>2,000文字（標準）</option>
+            <option value="3000">3,000文字（詳細）</option>
+            <option value="5000">5,000文字（完全版）</option>
+          </select>
+        </div>
+        <div class="full-col">
+          <label>競合調査の結果（任意 — Project 13 の分析レポートをペースト）</label>
+          <textarea id="competitor_context" rows="4" placeholder="競合調査ツールの分析レポートをここに貼り付けると、コンテンツギャップを考慮したアウトラインが生成されます（省略可）"></textarea>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="outline-btn" onclick="doOutline()">📋 アウトラインを生成する</button>
+      </div>
+      <div class="error-box" id="settings-error"></div>
+    </div>
+  </div>
+
+  <!-- ② アウトライン -->
+  <div class="tab-content" id="tab-outline">
+    <div class="box" id="outline-empty">
+      <div class="empty">① タブでキーワードを設定してアウトラインを生成してください</div>
+    </div>
+    <div id="outline-wrap" style="display:none;">
+      <div class="box">
+        <div class="outline-header">
+          <h2 id="outline-title-label"></h2>
+          <span class="meta-pill" id="outline-meta-pill"></span>
+        </div>
+        <div class="outline-meta-desc" id="outline-meta-desc"></div>
+        <div class="outline-sections" id="outline-sections"></div>
+        <div class="outline-faq" id="outline-faq"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="generate-btn" onclick="doGenerate()">✍️ この構成で記事を生成する</button>
+        <button class="btn btn-secondary" onclick="doOutline()">🔄 アウトラインを再生成</button>
+      </div>
+      <div class="progress-wrap" id="progress-wrap" style="display:none;">
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-text" id="progress-text">記事を生成中…</div>
+      </div>
+      <div class="error-box" id="outline-error"></div>
+    </div>
+  </div>
+
+  <!-- ③ 記事本文 -->
+  <div class="tab-content" id="tab-article">
+    <div class="box" id="article-empty">
+      <div class="empty">② タブでアウトラインを確認して記事を生成してください</div>
+    </div>
+    <div id="article-wrap" style="display:none;">
+      <div class="box">
+        <div class="article-header">
+          <div>
+            <h2 id="article-title-label"></h2>
+            <span class="char-count" id="char-count-badge"></span>
+          </div>
+          <div class="article-actions">
+            <button class="btn btn-secondary" onclick="copyMarkdown()">📋 Markdownをコピー</button>
+            <button class="btn btn-secondary" onclick="copyPlain()">📄 テキストをコピー</button>
+            <button class="btn btn-secondary" onclick="downloadMarkdown()">💾 ダウンロード</button>
+            <button class="btn btn-primary"   onclick="togglePreview()">👁 プレビュー切替</button>
+          </div>
+        </div>
+        <!-- Markdown表示 -->
+        <div id="article-markdown" class="article-markdown"></div>
+        <!-- プレビュー（HTML） -->
+        <div id="article-preview" class="article-preview" style="display:none;"></div>
+        <div class="ai-note">※ この記事はAIが生成した下書きです。公開前に内容の事実確認・表現の調整を行ってください。</div>
+      </div>
+      <div class="box reading-meta" id="reading-meta"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

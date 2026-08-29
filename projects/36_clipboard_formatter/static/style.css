@@ -1,0 +1,48 @@
+body {
+  font-family: "Hiragino Sans", "Meiryo", sans-serif;
+  background: #f5f5f7;
+  margin: 0;
+  padding: 40px 16px;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  background: white;
+  padding: 32px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+h1 {
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+
+h2 {
+  font-size: 16px;
+  margin-top: 28px;
+}
+
+.history-item {
+  border-bottom: 1px solid #eee;
+  padding: 12px 0;
+}
+
+.history-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #888;
+}
+
+.history-mode {
+  font-weight: bold;
+  color: #2d6cdf;
+}
+
+.history-original, .history-result {
+  margin: 4px 0;
+  font-size: 14px;
+  white-space: pre-wrap;
+}

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>多言語リアルタイム翻訳チャット</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>多言語リアルタイム翻訳チャット</h1>
+    <p>テキストを入力すると、日・英・中・韓へリアルタイムに翻訳します。</p>
+
+    <form id="translate-form">
+      <input type="text" id="text-input" placeholder="翻訳したいテキストを入力" required>
+      <button type="submit" id="translate-submit-btn">翻訳する</button>
+    </form>
+    <p id="translate-loading" class="loading" hidden>⏳ 翻訳中です。しばらくお待ちください…</p>
+
+    <div id="error-message" class="flash-error"></div>
+
+    <div class="original-block">
+      <div class="lang-header">
+        <h2>原文</h2>
+        <button type="button" class="copy-button" onclick="copyOriginal()">コピー</button>
+      </div>
+      <p id="original-display"></p>
+    </div>
+
+    <div class="lang-grid">
+      {% for code, label in langs %}
+        <div class="lang-card" data-lang="{{ code }}">
+          <div class="lang-header">
+            <span class="lang-label">{{ label }}</span>
+            <button type="button" class="copy-button" onclick="copyLang('{{ code }}')">コピー</button>
+          </div>
+          <p class="lang-text" id="lang-text-{{ code }}"></p>
+        </div>
+      {% endfor %}
+    </div>
+
+    <h2>翻訳履歴</h2>
+    <div id="history-list">
+      {% for row in history %}
+        <div class="history-item">
+          <p class="history-original">{{ row.original_text }}</p>
+          <ul>
+            {% for code, label in langs %}
+              <li><strong>{{ label }}</strong>: {{ row[code] }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <script>
+    const LANGS = {{ langs | tojson }};
+  </script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

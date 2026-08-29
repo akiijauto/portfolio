@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>求人原稿・面接質問自動生成</title>
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+<link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <h1>🧑‍💼 求人原稿・面接質問自動生成</h1>
+  <p class="header-tagline">募集条件と仕事内容を入力するだけで、AIが求人原稿と面接質問リストを作成します</p>
+</header>
+
+<div class="tab-nav">
+  <button class="tab-btn active" data-tab="tab-input" onclick="switchTab('tab-input')">① 募集情報入力</button>
+  <button class="tab-btn" data-tab="tab-result" onclick="switchTab('tab-result')">② 求人原稿・面接質問</button>
+</div>
+
+<div class="container">
+
+  <!-- ① 募集情報入力 -->
+  <div id="tab-input" class="tab-pane active">
+    <div class="card">
+      <div class="card-header">
+        <span>募集情報の入力</span>
+        <button class="btn-sub" onclick="loadSampleData()">サンプルを読み込む</button>
+      </div>
+
+      <label for="position">募集職種</label>
+      <input type="text" id="position" maxlength="500" placeholder="例: カフェのホールスタッフ">
+
+      <label for="employment-type" style="margin-top:12px;">雇用形態</label>
+      <input type="text" id="employment-type" maxlength="500" placeholder="例: アルバイト・パート">
+
+      <label for="work-schedule" style="margin-top:12px;">勤務時間・曜日</label>
+      <input type="text" id="work-schedule" maxlength="500" placeholder="例: 平日10:00-18:00の間で週3日〜、1日4時間以上">
+
+      <label for="salary" style="margin-top:12px;">給与・時給</label>
+      <input type="text" id="salary" maxlength="500" placeholder="例: 時給1100円〜（経験により昇給あり）">
+
+      <label for="job-description" style="margin-top:12px;">仕事内容</label>
+      <textarea id="job-description" maxlength="1000" rows="5" placeholder="例: 接客・レジ対応、ドリンク作成、簡単な清掃業務など。"></textarea>
+      <div class="char-count"><span id="job-count">0</span> / 1000</div>
+
+      <label for="ideal-candidate" style="margin-top:12px;">求める人物像（任意）</label>
+      <textarea id="ideal-candidate" maxlength="500" rows="3" placeholder="例: 笑顔で接客できる方、未経験歓迎。"></textarea>
+
+      <label for="appeal-points" style="margin-top:12px;">アピールポイント（任意）</label>
+      <textarea id="appeal-points" maxlength="500" rows="3" placeholder="例: 駅徒歩3分、シフト相談OK、まかない付き。"></textarea>
+
+      <button id="generate-btn" class="btn-primary" onclick="doGenerate()">AIで求人原稿を作成する</button>
+    </div>
+    <div id="input-error" class="result-err" style="display:none;"></div>
+  </div>
+
+  <!-- ② 求人原稿・面接質問 -->
+  <div id="tab-result" class="tab-pane">
+    <div id="result-empty" class="card empty-state">
+      まだ作成結果がありません。「①募集情報入力」タブで情報を入力し、「AIで求人原稿を作成する」を押してください。
+    </div>
+    <div id="result-content" style="display:none;">
+      <div class="card">
+        <div class="card-header">
+          <span>📰 求人原稿</span>
+          <div>
+            <button class="btn-sub" onclick="copyText('posting')">📋 コピー</button>
+            <button class="btn-sub" onclick="downloadText('posting')">⬇ ダウンロード</button>
+          </div>
+        </div>
+        <h3 id="posting-title" class="posting-title"></h3>
+        <p id="posting-catch" class="posting-catch"></p>
+        <p id="posting-desc" class="posting-desc"></p>
+
+        <div class="posting-section">
+          <div class="posting-section-title">応募資格・歓迎条件</div>
+          <ul id="posting-requirements" class="insight-list"></ul>
+        </div>
+        <div class="posting-section">
+          <div class="posting-section-title">勤務条件</div>
+          <ul id="posting-conditions" class="insight-list"></ul>
+        </div>
+        <div class="posting-section">
+          <div class="posting-section-title">アピールポイント</div>
+          <ul id="posting-appeal" class="insight-list"></ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span>🎤 面接質問リスト</span>
+          <div>
+            <button class="btn-sub" onclick="copyText('interview')">📋 コピー</button>
+            <button class="btn-sub" onclick="downloadText('interview')">⬇ ダウンロード</button>
+          </div>
+        </div>
+        <div class="posting-section">
+          <div class="posting-section-title">基本的な質問</div>
+          <ul id="interview-basic" class="insight-list"></ul>
+        </div>
+        <div class="posting-section">
+          <div class="posting-section-title">職種に関する質問</div>
+          <ul id="interview-role" class="insight-list"></ul>
+        </div>
+        <div class="posting-section">
+          <div class="posting-section-title">⚠️ 面接で避けるべき質問・注意事項</div>
+          <ul id="interview-notes" class="insight-list"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>リアルタイム為替・株価モニター</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>リアルタイム為替・株価モニター</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flash">
+          {% for category, message in messages %}
+            <li class="flash-{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    {% if daily_comment %}
+      <div class="daily-comment">
+        <strong>今日の相場一言コメント:</strong> {{ daily_comment }}
+      </div>
+    {% endif %}
+
+    <div class="price-grid">
+      <div class="price-card"><span class="price-label">USD/JPY</span><span class="price-value" id="price-usdjpy">--</span></div>
+      <div class="price-card"><span class="price-label">EUR/JPY</span><span class="price-value" id="price-eurjpy">--</span></div>
+      <div class="price-card"><span class="price-label">日経225</span><span class="price-value" id="price-nikkei225">--</span></div>
+      <div class="price-card"><span class="price-label">S&amp;P500</span><span class="price-value" id="price-sp500">--</span></div>
+    </div>
+
+    <canvas id="market-chart" height="120"></canvas>
+
+    <h2>アラート設定</h2>
+    <form method="post" action="{{ url_for('set_alert') }}" id="alert-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label for="usdjpy_threshold">USD/JPYが指定レートを超えたら通知する</label>
+      <input type="number" step="0.01" id="usdjpy_threshold" name="usdjpy_threshold"
+             value="{{ alert_threshold or '' }}" placeholder="例: 155.00">
+      <button type="submit">設定</button>
+    </form>
+    <p id="notification-permission-hint" class="hint"></p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4/dist/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>お問い合わせフォーム | Webフォーム→Notion自動転記Bot</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <p class="app-name">Webフォーム→Notion自動転記Bot</p>
+    <h1>お問い合わせフォーム</h1>
+    <p>お問い合わせ内容はAIが自動で要約・分類し、担当者に通知されます。</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flash">
+          {% for category, message in messages %}
+            <li class="flash-{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('submit') }}" onsubmit="return startSubmitLoading(this)">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <label for="name">お名前 *</label>
+      <input type="text" id="name" name="name" required maxlength="50">
+
+      <label for="email">メールアドレス *</label>
+      <input type="email" id="email" name="email" required maxlength="100">
+
+      <label for="subject">用件 *</label>
+      <input type="text" id="subject" name="subject" required maxlength="100">
+
+      <label for="detail">詳細 *</label>
+      <textarea id="detail" name="detail" rows="6" required maxlength="2000"></textarea>
+
+      <button type="submit" id="submit-btn">送信する</button>
+      <p id="submit-loading" class="loading" hidden>⏳ 送信中です。しばらくお待ちください…</p>
+    </form>
+  </div>
+
+  <script>
+    function startSubmitLoading(form) {
+      document.getElementById("submit-btn").disabled = true;
+      document.getElementById("submit-loading").hidden = false;
+      return true;
+    }
+  </script>
+</body>
+</html>

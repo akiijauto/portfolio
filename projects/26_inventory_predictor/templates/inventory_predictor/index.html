@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>在庫発注タイミング予測AI</title>
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+<link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <h1>📦 在庫発注タイミング予測AI</h1>
+  <p class="header-tagline">商品ごとの在庫数・消費ペース・発注リードタイムから、AIが発注タイミングと発注量を予測します</p>
+</header>
+
+<div class="tab-nav">
+  <button class="tab-btn active" data-tab="tab-input" onclick="switchTab('tab-input')">① 在庫情報入力</button>
+  <button class="tab-btn" data-tab="tab-result" onclick="switchTab('tab-result')">② 発注予測</button>
+</div>
+
+<div class="container">
+
+  <!-- ① 在庫情報入力 -->
+  <div id="tab-input" class="tab-pane active">
+    <div class="card">
+      <div class="card-header">
+        <span>商品一覧（最大30件）</span>
+        <button class="btn-sub" onclick="loadSampleData()">サンプルデータを読み込む</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr><th>商品名</th><th>現在の在庫数</th><th>1日あたりの平均消費量</th><th>発注リードタイム(日)</th><th>発注ロット</th><th></th></tr>
+        </thead>
+        <tbody id="item-rows"></tbody>
+      </table>
+      <button class="btn-sub" onclick="addItemRow()">＋ 商品を追加</button>
+
+      <label for="notes" style="margin-top:16px;">追加の考慮事項（任意）</label>
+      <textarea id="notes" maxlength="1000" rows="4" placeholder="例: 来週末はイベントがあり来客数が通常の1.5倍を見込んでいる。"></textarea>
+      <div class="char-count"><span id="char-count">0</span> / 1000</div>
+
+      <button id="predict-btn" class="btn-primary" onclick="doPredict()">AIで発注タイミングを予測する</button>
+    </div>
+    <div id="input-error" class="result-err" style="display:none;"></div>
+  </div>
+
+  <!-- ② 発注予測 -->
+  <div id="tab-result" class="tab-pane">
+    <div id="result-empty" class="card empty-state">
+      まだ予測結果がありません。「①在庫情報入力」タブで情報を入力し、「AIで発注タイミングを予測する」を押してください。
+    </div>
+    <div id="result-content" style="display:none;">
+      <div id="items-list"></div>
+      <div class="card">
+        <div class="card-header"><span>⚠️ 全体で気になる点</span></div>
+        <ul id="concern-list" class="insight-list"></ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><span>💡 改善提案</span></div>
+        <ul id="suggestion-list" class="insight-list"></ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

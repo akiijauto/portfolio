@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>問い合わせ管理CRM</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <h1>問い合わせ管理CRM</h1>
+  <p>問い合わせから成約まで、案件の進捗を一元管理。AIが返信メールの下書きも作成</p>
+</header>
+
+<div class="hero-stats">
+  <div class="hero-stat hero-stat-accent">
+    <div class="hero-num" id="stat-total">0<span class="hero-unit">件</span></div>
+    <div class="hero-label">案件総数</div>
+  </div>
+  <div class="hero-divider"></div>
+  <div class="hero-stat">
+    <div class="hero-num" id="stat-new">0<span class="hero-unit">件</span></div>
+    <div class="hero-label">新規</div>
+  </div>
+  <div class="hero-divider"></div>
+  <div class="hero-stat">
+    <div class="hero-num" id="stat-progress">0<span class="hero-unit">件</span></div>
+    <div class="hero-label">対応中（連絡済み・商談中）</div>
+  </div>
+  <div class="hero-divider"></div>
+  <div class="hero-stat">
+    <div class="hero-num" id="stat-won">0<span class="hero-unit">件</span></div>
+    <div class="hero-label">成約</div>
+  </div>
+</div>
+
+<nav class="tab-nav">
+  <div class="tab active" onclick="switchTab('new')">① 新規登録</div>
+  <div class="tab"        onclick="switchTab('list')">② 案件一覧・進捗管理</div>
+  <div class="tab"        onclick="switchTab('reply')">③ AI返信文生成</div>
+</nav>
+
+<div class="container">
+
+  <!-- ① 新規登録 -->
+  <div class="tab-content active" id="tab-new">
+    <div class="box">
+      <h2>問い合わせ情報を登録</h2>
+      <div class="form-grid">
+        <div>
+          <label>会社名・お名前 <span class="req">必須</span></label>
+          <input type="text" id="in-company" placeholder="例: 株式会社サンプル" maxlength="100">
+        </div>
+        <div>
+          <label>ご担当者名</label>
+          <input type="text" id="in-contact" placeholder="例: 山田 太郎" maxlength="100">
+        </div>
+        <div>
+          <label>メールアドレス</label>
+          <input type="email" id="in-email" placeholder="example@example.com" maxlength="255">
+        </div>
+        <div>
+          <label>電話番号</label>
+          <input type="text" id="in-phone" placeholder="例: 090-1234-5678" maxlength="50">
+        </div>
+        <div class="full">
+          <label>流入経路</label>
+          <div class="goal-grid">
+            {% for s in sources %}
+            <label class="goal-chip">
+              <input type="radio" name="source" value="{{ s }}" {% if loop.first %}checked{% endif %}>
+              <span>{{ s }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="full">
+          <label>問い合わせ内容</label>
+          <textarea id="in-content" rows="4" placeholder="問い合わせフォームやメールの内容を貼り付け" maxlength="2000"></textarea>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="create-btn" onclick="doCreate()">＋ 案件を登録</button>
+      </div>
+      <div class="error-box" id="create-error"></div>
+      <div class="success-box" id="create-success"></div>
+    </div>
+  </div>
+
+  <!-- ② 一覧・進捗管理 -->
+  <div class="tab-content" id="tab-list">
+    <div class="box filter-box">
+      <div class="filter-row" id="status-filter">
+        <button class="filter-chip active" data-status="" onclick="setFilter('')">すべて</button>
+        {% for s in statuses %}
+        <button class="filter-chip" data-status="{{ s }}" onclick="setFilter('{{ s }}')">{{ s }}</button>
+        {% endfor %}
+      </div>
+    </div>
+    <div id="list-empty" class="box">
+      <div class="empty">登録された案件はまだありません。①タブから登録してください</div>
+    </div>
+    <div id="inquiry-list"></div>
+  </div>
+
+  <!-- ③ AI返信文生成 -->
+  <div class="tab-content" id="tab-reply">
+    <div class="box">
+      <h2>返信メールの下書きを生成</h2>
+      <div class="form-grid">
+        <div class="full">
+          <label>対象の案件</label>
+          <select id="reply-inquiry"><option value="">-- 案件を選択 --</option></select>
+        </div>
+        <div>
+          <label>返信トーン</label>
+          <div class="goal-grid">
+            {% for t in reply_tones %}
+            <label class="goal-chip">
+              <input type="radio" name="tone" value="{{ t }}" {% if loop.first %}checked{% endif %}>
+              <span>{{ t }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="full">
+          <label>返信で伝えたいこと（任意）</label>
+          <textarea id="reply-purpose" rows="2" placeholder="例: 来週の打ち合わせ日程を提案したい、見積もりを送付したい" maxlength="200"></textarea>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="reply-btn" onclick="doReplyDraft()">✉️ 返信文を生成</button>
+      </div>
+      <div class="progress-wrap" id="reply-progress" style="display:none;">
+        <div class="progress-bar"><div class="progress-fill" id="reply-progress-fill"></div></div>
+        <div class="progress-text">AIが返信文を作成中…</div>
+      </div>
+      <div class="error-box" id="reply-error"></div>
+    </div>
+
+    <div class="box" id="reply-result-box" style="display:none;">
+      <div class="card-header">
+        <h2>返信文ドラフト</h2>
+        <div class="result-actions">
+          <button class="btn btn-sm btn-copy-all" onclick="copyDraft()">📋 コピー</button>
+          <button class="btn btn-sm btn-copy-all" onclick="downloadDraft()">💾 ダウンロード</button>
+        </div>
+      </div>
+      <div class="reply-draft" id="reply-draft"></div>
+      <div class="ai-note">※ AIが生成した返信文の下書きです。送信前に内容をご確認・編集してください。</div>
+    </div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

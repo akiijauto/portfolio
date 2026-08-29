@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "クリップボード自動整形",
+  "version": "1.0.0",
+  "description": "コピーしたテキストをAIで整形（要約・箇条書き・誤字修正・丁寧語変換）するChrome拡張",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "permissions": ["clipboardRead", "clipboardWrite"],
+  "host_permissions": [
+    "http://localhost:5036/*",
+    "https://project36-clipboard-formatter.onrender.com/*"
+  ]
+}

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>SNS統合管理ツール</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <h1>SNS統合管理ツール</h1>
+  <p>テーマ提案 → ハッシュタグ最適化 → 投稿文生成・画像プロンプト → 投稿カレンダー → 効果分析まで1画面で（旧Project01/06/15統合版）</p>
+</header>
+
+<div class="hero-stats">
+  <div class="hero-stat">
+    <div class="hero-num">15<span class="hero-unit">個</span></div>
+    <div class="hero-label">AIがテーマを提案</div>
+  </div>
+  <div class="hero-divider"></div>
+  <div class="hero-stat hero-stat-accent">
+    <div class="hero-num">3<span class="hero-unit">案</span></div>
+    <div class="hero-label">切り口違いの投稿文＋画像プロンプト</div>
+  </div>
+  <div class="hero-divider"></div>
+  <div class="hero-stat">
+    <div class="hero-num">1<span class="hero-unit">画面</span></div>
+    <div class="hero-label">予約・承認・自動投稿・効果分析</div>
+  </div>
+</div>
+
+<nav class="tab-nav">
+  <div class="tab active" onclick="switchTab('theme')">① テーマ提案</div>
+  <div class="tab"        onclick="switchTab('hashtag')">② ハッシュタグ最適化</div>
+  <div class="tab"        onclick="switchTab('variation')">③ 投稿文生成</div>
+  <div class="tab"        onclick="switchTab('calendar')">④ 投稿カレンダー</div>
+  <div class="tab"        onclick="switchTab('analytics')">⑤ 効果分析</div>
+</nav>
+
+<div class="container">
+
+  <!-- ① テーマ提案 -->
+  <div class="tab-content active" id="tab-theme">
+    <div class="box">
+      <h2>業界・ターゲットからAIが投稿テーマを提案</h2>
+      <div class="form-grid-3">
+        <div>
+          <label>業界・ジャンル <span class="req">必須</span></label>
+          <input type="text" id="th-industry" placeholder="例: カフェ、IT、美容" maxlength="100">
+        </div>
+        <div>
+          <label>ターゲット <span class="req">必須</span></label>
+          <input type="text" id="th-target" placeholder="例: 20代女性、近隣のオフィスワーカー" maxlength="100">
+        </div>
+        <div>
+          <label>提案数</label>
+          <input type="number" id="th-count" value="15" min="1" max="50">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="th-btn" onclick="doSuggest()">💡 テーマを提案する</button>
+      </div>
+      <div class="error-box" id="th-error"></div>
+    </div>
+
+    <div class="box" id="th-result" style="display:none;">
+      <h2>提案されたテーマ <span class="hint">(クリックで③投稿文生成に渡します。🔥は過去に反応が良かったテーマ)</span></h2>
+      <div class="hashtag-grid" id="th-grid"></div>
+    </div>
+  </div>
+
+  <!-- ② ハッシュタグ -->
+  <div class="tab-content" id="tab-hashtag">
+    <div class="box">
+      <h2>プラットフォーム別ハッシュタグを自動生成</h2>
+      <div class="form-grid-3">
+        <div class="col-2">
+          <label>投稿テーマ <span class="req">必須</span></label>
+          <input type="text" id="ht-topic" placeholder="例: 朝のルーティン、業務自動化のコツ" maxlength="200">
+        </div>
+        <div>
+          <label>SNS</label>
+          <select id="ht-sns">
+            {% for s in sns_types %}<option>{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-3">
+          <label>業界・ジャンル（任意）</label>
+          <input type="text" id="ht-industry" placeholder="例: カフェ、IT、美容" maxlength="100">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="ht-btn" onclick="doHashtags()">🏷 ハッシュタグを生成する</button>
+      </div>
+      <div class="error-box" id="ht-error"></div>
+    </div>
+
+    <div class="box" id="ht-result" style="display:none;">
+      <div class="result-header">
+        <h2 id="ht-result-title"></h2>
+        <button class="btn btn-secondary" onclick="copyHashtags()">📋 コピー</button>
+      </div>
+      <div class="strategy-note" id="ht-strategy"></div>
+      <div class="hashtag-grid" id="ht-grid"></div>
+      <div class="hashtag-plain" id="ht-plain"></div>
+    </div>
+  </div>
+
+  <!-- ③ 投稿文生成 -->
+  <div class="tab-content" id="tab-variation">
+    <div class="box">
+      <h2>同テーマで3つの切り口バリエーションを生成</h2>
+      <div class="form-grid-3">
+        <div class="col-2">
+          <label>投稿テーマ <span class="req">必須</span></label>
+          <input type="text" id="var-topic" placeholder="例: Pythonで業務を5時間→30分に短縮した話" maxlength="200">
+        </div>
+        <div>
+          <label>SNS</label>
+          <select id="var-sns">
+            {% for s in sns_types %}<option>{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-3">
+          <label>文体・トーン</label>
+          <select id="var-tone">
+            {% for t in tones %}<option>{{ t }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="var-btn" onclick="doVariations()">✍️ 3つのバリエーションを生成</button>
+      </div>
+      <div class="error-box" id="var-error"></div>
+    </div>
+
+    <div id="var-results" style="display:none;">
+      <div class="variation-grid" id="var-grid"></div>
+
+      <div class="box" id="img-box">
+        <h2>🎨 画像プロンプト生成</h2>
+        <p class="hint">選択した投稿文に合うMidjourney/DALL-E向けの英語プロンプトを生成します。</p>
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="img-btn" onclick="doImagePrompt()">🎨 画像プロンプトを生成</button>
+        </div>
+        <div class="error-box" id="img-error"></div>
+        <div class="hashtag-plain" id="img-result" style="display:none;"></div>
+      </div>
+
+      <div class="box" id="var-save-box">
+        <h2>📅 投稿カレンダーに保存</h2>
+        <p class="hint">バリエーションを1つ選択し、②で選択中のハッシュタグと合わせて投稿カレンダーに予約保存します。</p>
+        <div class="form-grid-3">
+          <div class="col-2">
+            <label>投稿日時（任意）</label>
+            <input type="datetime-local" id="cal-scheduled-at">
+          </div>
+          <div class="col-2">
+            <label>案内URL（任意・Twitterはリプライで案内）</label>
+            <input type="url" id="cal-url" placeholder="https://note.com/...">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="save-cal-btn" onclick="saveSelectedToCalendar()">📅 投稿カレンダーに保存</button>
+        </div>
+        <div class="error-box" id="save-cal-error"></div>
+        <div class="success-note" id="save-cal-success" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ カレンダー -->
+  <div class="tab-content" id="tab-calendar">
+    <div class="box">
+      <div class="cal-header">
+        <h2>📅 投稿カレンダー管理</h2>
+        <button class="btn btn-secondary" onclick="loadPosts()">🔄 更新</button>
+      </div>
+      <p class="hint">下書き→承認→予約→投稿済みまでをここで管理します。Discord/Twitterへの投稿、予約の編集・取消もここから行えます。</p>
+      <div id="posts-warning" class="warning-note" style="display:none;"></div>
+      <div id="posts-empty" class="empty" style="display:none;">投稿がありません。③投稿文生成からカレンダーに保存してください。</div>
+      <div id="posts-wrap" style="display:none;">
+        <div class="cal-stats" id="posts-stats"></div>
+        <table class="cal-table" id="posts-table">
+          <thead>
+            <tr><th>予約日時</th><th>SNS</th><th>タイトル</th><th>本文</th><th>状態</th><th>操作</th></tr>
+          </thead>
+          <tbody id="posts-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑤ 効果分析 -->
+  <div class="tab-content" id="tab-analytics">
+    <div class="box">
+      <h2>投稿の効果を記録する</h2>
+      <p class="hint">投稿後の「いいね・コメント・リーチ」を記録すると、①テーマ提案で人気テーマに🔥バッジが付くようになります。</p>
+      <div class="form-grid-3">
+        <div class="col-2">
+          <label>トピック <span class="req">必須</span></label>
+          <input type="text" id="eg-topic" placeholder="例: 朝のルーティン" maxlength="200">
+        </div>
+        <div>
+          <label>SNS</label>
+          <select id="eg-sns">
+            {% for s in sns_types %}<option>{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+        <div><label>いいね数</label><input type="number" id="eg-likes" value="0" min="0"></div>
+        <div><label>コメント数</label><input type="number" id="eg-comments" value="0" min="0"></div>
+        <div><label>リーチ数</label><input type="number" id="eg-reach" value="0" min="0"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="eg-btn" onclick="doEngage()">📊 記録する</button>
+      </div>
+      <div class="error-box" id="eg-error"></div>
+      <div class="success-note" id="eg-success" style="display:none;">✅ 記録しました</div>
+    </div>
+
+    <div class="box">
+      <div class="cal-header">
+        <h2>人気トピック ランキング</h2>
+        <button class="btn btn-secondary" onclick="loadAnalytics()">🔄 更新</button>
+      </div>
+      <div id="an-empty" class="empty" style="display:none;">まだ記録がありません</div>
+      <table class="cal-table" id="an-table" style="display:none;">
+        <thead>
+          <tr><th>トピック</th><th>SNS</th><th>投稿数</th><th>平均いいね</th><th>平均コメント</th><th>平均リーチ</th><th>スコア</th></tr>
+        </thead>
+        <tbody id="an-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="box">
+      <div class="cal-header">
+        <h2>よく使われているハッシュタグ TOP30</h2>
+        <button class="btn btn-secondary" onclick="loadHashtagRanking()">🔄 更新</button>
+      </div>
+      <div id="hr-empty" class="empty" style="display:none;">まだ投稿がありません</div>
+      <div class="hashtag-grid" id="hr-grid"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

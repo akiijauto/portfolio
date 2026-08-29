@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>LINE Bot タスク管理</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>LINE Bot タスク管理</h1>
+    <p>LINEで送られたメッセージから自動登録されたタスクの一覧です。</p>
+
+    <table class="task-table">
+      <thead>
+        <tr>
+          <th>タスク名</th>
+          <th>期限</th>
+          <th>カテゴリ</th>
+          <th>ステータス</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in tasks %}
+          <tr class="{{ 'done' if task.status == '完了' else '' }}">
+            <td>{{ task.task_name }}</td>
+            <td>{{ task.due_date or '未設定' }}</td>
+            <td>{{ task.category }}</td>
+            <td>{{ task.status }}</td>
+            <td>
+              {% if task.status != '完了' %}
+                <form method="post" action="{{ url_for('complete_task', task_id=task.id) }}">
+                  <button type="submit">完了にする</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5">まだタスクがありません。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

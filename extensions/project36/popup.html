@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>クリップボード自動整形</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>クリップボード自動整形</h1>
+
+  <textarea id="text-input" rows="6" placeholder="整形したいテキストを入力（または下のボタンでクリップボードから貼り付け）"></textarea>
+  <button id="paste-button" type="button">クリップボードから貼り付け</button>
+
+  <label for="mode-select">整形モード</label>
+  <select id="mode-select">
+    <option value="proofread">誤字修正</option>
+    <option value="bullet">箇条書き変換</option>
+    <option value="summarize">要約</option>
+    <option value="polite">丁寧語変換</option>
+  </select>
+
+  <button id="format-button" type="button">整形する</button>
+
+  <p id="error-message" class="error"></p>
+
+  <div id="result-block" class="hidden">
+    <label>整形結果</label>
+    <textarea id="result-text" rows="6" readonly></textarea>
+    <button id="copy-button" type="button">クリップボードにコピー</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>クリップボード自動整形ツール</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>クリップボード自動整形ツール</h1>
+    <p>Chrome拡張から送信された整形リクエストの履歴を表示します。</p>
+
+    <h2>整形履歴</h2>
+    <div class="history-list">
+      {% for row in history %}
+        <div class="history-item">
+          <div class="history-meta">
+            <span class="history-mode">{{ mode_labels.get(row.mode, row.mode) }}</span>
+            <span class="history-date">{{ row.created_at }}</span>
+          </div>
+          <p class="history-original">原文: {{ row.original_text }}</p>
+          <p class="history-result">結果: {{ row.result_text }}</p>
+        </div>
+      {% else %}
+        <p>まだ整形履歴がありません。</p>
+      {% endfor %}
+    </div>
+  </div>
+</body>
+</html>

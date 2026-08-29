@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>広告文生成ツール</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <h1>広告文生成ツール</h1>
+  <p>Google・Meta・LINE — 3媒体の広告文をAIが一括生成。A/Bバリエーション付き</p>
+</header>
+
+<div class="hero-stats">
+  <div class="hero-stat">
+    <div class="hero-num">3<span class="hero-unit">媒体</span></div>
+    <div class="hero-label">Google / Meta / LINE</div>
+  </div>
+  <div class="hero-divider"></div>
+  <div class="hero-stat hero-stat-accent">
+    <div class="hero-num">10<span class="hero-unit">本</span></div>
+    <div class="hero-label">Google見出しを一括生成</div>
+  </div>
+  <div class="hero-divider"></div>
+  <div class="hero-stat">
+    <div class="hero-num">A/B<span class="hero-unit"></span></div>
+    <div class="hero-label">バリエーション自動生成</div>
+  </div>
+</div>
+
+<nav class="tab-nav">
+  <div class="tab active" onclick="switchTab('input')">① 商品・サービス情報</div>
+  <div class="tab"        onclick="switchTab('result')">② 広告文一覧</div>
+</nav>
+
+<div class="container">
+
+  <!-- ① 入力 -->
+  <div class="tab-content active" id="tab-input">
+    <div class="box">
+      <h2>広告の基本情報を入力</h2>
+      <div class="form-grid">
+        <div>
+          <label>商品・サービス名 <span class="req">必須</span></label>
+          <input type="text" id="product" placeholder="例: 業務自動化コンサルティング" maxlength="100">
+        </div>
+        <div>
+          <label>業界・ジャンル</label>
+          <input type="text" id="industry" placeholder="例: IT、飲食、美容、不動産" maxlength="100">
+        </div>
+        <div class="full">
+          <label>ターゲット <span class="req">必須</span></label>
+          <input type="text" id="target" placeholder="例: 中小企業の経営者・業務担当者（従業員10〜50名）" maxlength="100">
+        </div>
+        <div class="full">
+          <label>強み・USP（最もアピールしたい点）<span class="req">必須</span></label>
+          <textarea id="usp" rows="3" placeholder="例: 導入コスト0円・1週間で稼働・月5時間以上の業務削減を保証" maxlength="300" oninput="updateUspCounter()"></textarea>
+          <div class="char-counter" id="usp-counter">0 / 300文字</div>
+        </div>
+        <div class="full">
+          <label>広告の目的</label>
+          <div class="goal-grid">
+            {% for g in goals %}
+            <label class="goal-chip">
+              <input type="radio" name="goal" value="{{ g }}" {% if loop.first %}checked{% endif %}>
+              <span>{{ g }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="gen-btn" onclick="doGenerate()">🚀 3媒体の広告文を一括生成</button>
+      </div>
+      <div class="progress-wrap" id="progress-wrap" style="display:none;">
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-text" id="progress-text">AIが広告文を生成中…</div>
+      </div>
+      <div class="error-box" id="gen-error"></div>
+    </div>
+
+    <div class="tip-box">
+      <div class="tip-icon">💡</div>
+      <div>
+        <strong>USPを具体的に書くほど精度が上がります</strong><br>
+        「高品質」より「導入後30日以内に工数50%削減保証」のように数字・期間・保証を入れると、クリック率の高い広告文が生成されます。
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 結果 -->
+  <div class="tab-content" id="tab-result">
+    <div id="result-empty" class="box">
+      <div class="empty">① タブで情報を入力して広告文を生成してください</div>
+    </div>
+
+    <div id="result-wrap" style="display:none;">
+
+      <div class="result-actions">
+        <button class="btn btn-secondary" onclick="downloadAll()">💾 広告文をまとめてダウンロード</button>
+      </div>
+
+      <!-- Google検索広告 -->
+      <div class="platform-card platform-google">
+        <div class="platform-header">
+          <div class="platform-icon">🔍</div>
+          <div>
+            <div class="platform-name">Google 検索広告</div>
+            <div class="platform-note">見出し 30文字以内 × 10本 ／ 説明文 90文字以内 × 4本</div>
+          </div>
+          <button class="btn btn-sm btn-copy-all" onclick="copyAll('google')">📋 全コピー</button>
+        </div>
+        <div class="ad-section">
+          <div class="ad-label">見出し（Headlines）</div>
+          <div class="headlines-grid" id="g-headlines"></div>
+        </div>
+        <div class="ad-section">
+          <div class="ad-label">説明文（Descriptions）</div>
+          <div id="g-descriptions"></div>
+        </div>
+        <div class="ab-section" id="g-ab"></div>
+      </div>
+
+      <!-- Meta広告 -->
+      <div class="platform-card platform-meta">
+        <div class="platform-header">
+          <div class="platform-icon">📘</div>
+          <div>
+            <div class="platform-name">Meta 広告（Facebook / Instagram）</div>
+            <div class="platform-note">プライマリテキスト 125文字 ／ 見出し 40文字 ／ 説明 30文字</div>
+          </div>
+          <button class="btn btn-sm btn-copy-all" onclick="copyAll('meta')">📋 全コピー</button>
+        </div>
+        <div class="ad-section">
+          <div class="ad-label">プライマリテキスト</div>
+          <div class="meta-primary" id="m-primary"></div>
+        </div>
+        <div class="ad-section meta-row">
+          <div class="meta-half">
+            <div class="ad-label">見出し</div>
+            <div class="meta-headline" id="m-headline"></div>
+          </div>
+          <div class="meta-half">
+            <div class="ad-label">説明文</div>
+            <div class="meta-desc" id="m-desc"></div>
+          </div>
+          <div class="meta-half">
+            <div class="ad-label">CTAボタン案</div>
+            <div id="m-cta"></div>
+          </div>
+        </div>
+        <div class="ab-section" id="m-ab"></div>
+      </div>
+
+      <!-- LINE広告 -->
+      <div class="platform-card platform-line">
+        <div class="platform-header">
+          <div class="platform-icon">💬</div>
+          <div>
+            <div class="platform-name">LINE 広告</div>
+            <div class="platform-note">タイトル 40文字 ／ テキスト 240文字</div>
+          </div>
+          <button class="btn btn-sm btn-copy-all" onclick="copyAll('line')">📋 全コピー</button>
+        </div>
+        <div class="ad-section">
+          <div class="ad-label">タイトル</div>
+          <div class="line-title" id="l-title"></div>
+        </div>
+        <div class="ad-section">
+          <div class="ad-label">テキスト</div>
+          <div class="line-text" id="l-text"></div>
+        </div>
+      </div>
+
+      <!-- コピーのポイント -->
+      <div class="box point-box">
+        <h2>📌 このコピーが効果的な理由</h2>
+        <div class="copy-points" id="copy-points"></div>
+        <div class="ai-note">※ AIが生成した広告文の下書きです。各媒体の審査基準・最新のガイドラインをご確認の上ご利用ください。</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

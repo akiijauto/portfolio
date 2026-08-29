@@ -1,0 +1,58 @@
+/* 音声入力式 日報・引継ぎ自動整形 スタイル */
+header { background: linear-gradient(135deg, #166534, #15803d, #22c55e); color: white; padding: 20px 24px 16px; }
+header h1 { font-size: 22px; }
+header p  { font-size: 13px; opacity: .85; margin-top: 4px; }
+
+.tab-nav { display: flex; background: #166534; padding: 0 24px; overflow-x: auto; }
+.tab { padding: 10px 20px; color: rgba(255,255,255,.65); font-size: 14px; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; }
+.tab:hover { color: white; }
+.tab.active { color: white; border-bottom-color: white; font-weight: bold; }
+
+.container { max-width: 800px; margin: 24px auto; padding: 0 16px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.box { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.box h2 { font-size: 15px; color: #1e293b; margin-bottom: 14px; font-weight: 700; }
+.box h3 { font-size: 13px; color: #15803d; margin-bottom: 6px; font-weight: 700; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.full { grid-column: span 2; }
+@media(max-width:640px){ .form-grid{grid-template-columns:1fr;} .full{grid-column:span 1;} }
+label { display: block; font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 600; }
+.req { color: #dc2626; font-size: 10px; background: #fee2e2; padding: 1px 5px; border-radius: 4px; margin-left: 4px; }
+
+/* ── 音声入力 ── */
+.mic-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.btn-mic { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.btn-mic:hover { background: #bbf7d0; }
+.btn-mic.mic-active { background: #ef4444; color: white; border-color: #ef4444; animation: pulse 1.2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .65; } }
+.mic-status { font-size: 12px; color: #15803d; }
+
+.char-count { font-size: 11px; color: #94a3b8; text-align: right; margin-top: 4px; }
+
+.btn-row { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-primary  { background: #16a34a; color: white; }
+.btn-primary:hover { background: #15803d; }
+.btn-secondary { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.btn-secondary:hover { background: #dcfce7; }
+
+.progress-wrap { margin-top: 12px; }
+.progress-bar  { background: #dcfce7; border-radius: 8px; height: 8px; overflow: hidden; }
+.progress-fill { background: linear-gradient(90deg, #16a34a, #4ade80); height: 100%; animation: indeterminate 1.2s ease-in-out infinite; }
+.progress-text { font-size: 12px; color: #15803d; margin-top: 6px; }
+@keyframes indeterminate { 0% { width: 10%; margin-left: 0; } 50% { width: 60%; margin-left: 20%; } 100% { width: 10%; margin-left: 90%; } }
+
+/* ── 整形結果 ── */
+.report-meta { display: flex; gap: 14px; font-size: 12px; color: #64748b; margin-bottom: 10px; font-weight: 600; }
+.report-summary { font-size: 13px; color: #334155; line-height: 1.7; background: #f0fdf4; border-radius: 8px; padding: 12px 14px; }
+
+.report-section { margin-bottom: 14px; }
+.report-section:last-child { margin-bottom: 0; }
+.report-section p { font-size: 13px; color: #475569; line-height: 1.7; white-space: pre-wrap; }
+
+.handover-box { border: 1px solid #bbf7d0; background: #f0fdf4; }
+.handover-box h2 { color: #15803d; }
+.handover-box ul { font-size: 13px; color: #334155; line-height: 1.9; padding-left: 20px; }
+
+.empty-note { font-size: 12px; color: #94a3b8; }

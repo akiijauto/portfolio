@@ -1,0 +1,46 @@
+header { background: linear-gradient(135deg, #14532d, #166534, #4ade80); color: white; padding: 36px 24px 28px; text-align: center; }
+header h1 { font-size: 24px; font-weight: 800; }
+.header-tagline { font-size: 13px; opacity: .85; margin-top: 8px; }
+
+.tab-nav { display: flex; justify-content: center; gap: 4px; background: #166534; padding: 0 16px; }
+.tab-btn { flex: 0 1 240px; padding: 12px 16px; border: none; background: transparent; color: rgba(255,255,255,.7); font-size: 13px; font-weight: bold; cursor: pointer; border-bottom: 3px solid transparent; }
+.tab-btn.active { color: white; border-bottom-color: #fbbf24; }
+
+.container { max-width: 760px; margin: 24px auto; padding: 0 16px; display: flex; flex-direction: column; gap: 16px; }
+.tab-pane { display: none; flex-direction: column; gap: 16px; }
+.tab-pane.active { display: flex; }
+
+.card-header { font-size: 14px; font-weight: bold; color: #1e293b; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.card label { font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 4px; }
+
+.btn-sub { padding: 7px 14px; border: 1px solid #bbf7d0; background: #f0fdf4; color: #166534; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
+.btn-sub:hover { background: #dcfce7; }
+
+.btn-primary { display: block; width: 100%; margin-top: 16px; padding: 12px; border: none; border-radius: 8px; background: #166534; color: white; font-size: 14px; font-weight: bold; cursor: pointer; }
+.btn-primary:hover { background: #14532d; }
+.btn-primary:disabled { background: #86efac; cursor: not-allowed; }
+
+.char-count { font-size: 11px; color: #94a3b8; text-align: right; margin-top: 4px; }
+
+.result-err { padding: 12px 16px; border-radius: 8px; background: #fef2f2; border-left: 3px solid #ef4444; color: #991b1b; font-size: 13px; }
+
+.empty-state { text-align: center; color: #94a3b8; font-size: 13px; padding: 40px 20px; }
+
+.manual-purpose { font-size: 13px; color: #475569; line-height: 1.7; margin-top: 8px; }
+
+.insight-list { list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #475569; }
+.insight-list li { padding-left: 18px; position: relative; line-height: 1.5; }
+.insight-list li::before { content: '・'; position: absolute; left: 0; color: #166534; font-weight: bold; }
+.insight-empty { font-size: 12px; color: #cbd5e1; }
+
+.checklist { list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: #1e293b; }
+.checklist label { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+.checklist input[type="checkbox"] { width: auto; margin-top: 2px; }
+
+.step-card { border: 1px solid #f1f5f9; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+.step-card:last-child { margin-bottom: 0; }
+.step-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.step-no { font-size: 11px; font-weight: bold; padding: 2px 9px; border-radius: 20px; background: #dcfce7; color: #166534; flex-shrink: 0; }
+.step-title { font-size: 13px; font-weight: bold; color: #1e293b; }
+.step-desc { font-size: 12px; color: #64748b; line-height: 1.6; }
+.step-tips { font-size: 12px; color: #b45309; background: #fffbeb; border-radius: 6px; padding: 6px 10px; margin-top: 8px; }

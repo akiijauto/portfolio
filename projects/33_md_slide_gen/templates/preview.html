@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>スライドプレビュー</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="toolbar">
+    <a href="{{ url_for('index') }}">← 編集に戻る</a>
+    <form method="post" action="{{ url_for('export_pptx') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="markdown" value="{{ markdown }}">
+      <input type="hidden" name="theme" value="{{ theme }}">
+      <button type="submit">PPTXをダウンロード</button>
+    </form>
+  </div>
+
+  <div class="reveal">
+    <div class="slides">
+      <section data-markdown data-separator="^\n---\n$">
+        <textarea data-template>
+{{ markdown }}
+        </textarea>
+      </section>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/markdown/markdown.js"></script>
+  <script>
+    Reveal.initialize({ plugins: [ RevealMarkdown ], hash: true });
+  </script>
+</body>
+</html>

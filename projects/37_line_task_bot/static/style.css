@@ -1,0 +1,48 @@
+body {
+  font-family: "Hiragino Sans", "Meiryo", sans-serif;
+  background: #f5f5f7;
+  margin: 0;
+  padding: 40px 16px;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  background: white;
+  padding: 32px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+h1 {
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+
+.task-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.task-table th, .task-table td {
+  border-bottom: 1px solid #eee;
+  padding: 8px;
+  text-align: left;
+}
+
+.task-table tr.done {
+  color: #999;
+  text-decoration: line-through;
+}
+
+button {
+  padding: 6px 12px;
+  background: #2d6cdf;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>音声入力式 日報・引継ぎ自動整形</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <h1>音声入力式 日報・引継ぎ自動整形</h1>
+  <p>音声入力・メモをAIが自動で日報・引継ぎ事項の形に整理します</p>
+</header>
+
+<nav class="tab-nav">
+  <div class="tab active" id="nav-input" onclick="switchTab('input')">① 入力</div>
+  <div class="tab" id="nav-result" onclick="switchTab('result')">② 整形済み日報</div>
+</nav>
+
+<div class="container">
+
+  <!-- ① 入力 -->
+  <div class="tab-content active" id="tab-input">
+    <div class="box">
+      <h2>本日の業務内容を入力</h2>
+      <div class="form-grid">
+        <div>
+          <label>日付</label>
+          <input type="date" id="report-date">
+        </div>
+        <div>
+          <label>記入者</label>
+          <input type="text" id="staff-name" maxlength="50" placeholder="例: 山田">
+        </div>
+        <div class="full">
+          <label>業務内容メモ <span class="req">必須</span></label>
+          <div class="mic-row">
+            <button class="btn btn-mic" id="mic-btn" onclick="toggleMic()">🎤 音声入力を開始</button>
+            <span class="mic-status" id="mic-status"></span>
+          </div>
+          <textarea id="raw-text" rows="10" maxlength="3000" placeholder="例: 今日は客数多くて忙しかった。13時頃に常連のお客さんから料理が遅いってクレームあって、店長に確認してもらって対応した。あと紙コップが残り少ないから明日発注お願いします…"></textarea>
+          <div class="char-count"><span id="char-count">0</span> / 3000文字</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="format-btn" onclick="doFormat()">📝 AIで日報を整理する</button>
+      </div>
+      <div class="progress-wrap" id="format-progress" style="display:none;">
+        <div class="progress-bar"><div class="progress-fill"></div></div>
+        <div class="progress-text">AIが内容を整理中…</div>
+      </div>
+      <div class="error-box" id="format-error"></div>
+    </div>
+  </div>
+
+  <!-- ② 整形済み日報 -->
+  <div class="tab-content" id="tab-result">
+    <div id="result-area"></div>
+    <div class="error-box" id="result-error"></div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

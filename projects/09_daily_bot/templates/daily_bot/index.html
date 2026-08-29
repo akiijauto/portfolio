@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>毎朝Discordお知らせbot</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <h1>毎朝Discordお知らせbot</h1>
+  <p>天気・為替・ニュース要約を毎朝Discordに自動配信</p>
+</header>
+
+<div class="container">
+
+  <!-- ステータス -->
+  <div class="box">
+    <h2>スケジュール状況</h2>
+    <p class="hint-text">①「配信時刻」を設定すると、毎朝その時刻にDiscordへ天気・為替・ニュースのまとめを自動送信します。②「今すぐDiscordに送信」を押すと、いつでもテスト送信できます。</p>
+    <div class="status-grid">
+      <div class="stat">
+        <div class="stat-label">次回実行予定</div>
+        <div class="stat-value" id="next-run">
+          {% if job.next_run %}{{ job.next_run }}{% else %}未設定{% endif %}
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">最終実行</div>
+        <div class="stat-value" id="last-run">
+          {% if logs %}{{ logs[0].at }}{% else %}まだありません{% endif %}
+        </div>
+      </div>
+    </div>
+    <button class="btn-discord" id="run-btn" onclick="doRun()">今すぐDiscordに送信</button>
+    <div class="result" id="run-result"></div>
+  </div>
+
+  <!-- スケジュール設定 -->
+  <div class="box">
+    <h2>配信時刻の設定（JST）</h2>
+    <div class="row">
+      <input type="time" id="sched-time"
+             value="{{ '%02d:%02d'|format(job.hour, job.minute) }}">
+      <button class="btn-save" onclick="doSchedule()">保存</button>
+    </div>
+    <div class="result" id="sched-result"></div>
+  </div>
+
+  <!-- 実行ログ -->
+  <div class="box">
+    <h2>実行ログ（直近5件）</h2>
+    <div id="log-wrap">
+      {% if logs %}
+      <table class="log-table">
+        <tr><th>日時</th><th>結果</th><th>概要</th></tr>
+        {% for log in logs %}
+        <tr>
+          <td>{{ log.at }}</td>
+          <td>
+            {% if log.status == 'success' %}
+              <span class="badge-ok">成功</span>
+            {% else %}
+              <span class="badge-err">失敗</span>
+            {% endif %}
+          </td>
+          <td>{{ log.summary }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+      <div class="empty">まだ実行履歴がありません</div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<script>
+const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+// nginx等でパスプレフィックス配下（例: /daily-bot）に置かれている場合、
+// 末尾スラッシュなしのURLだと相対パス指定がプレフィックスを失って解決される
+// バグを防ぐため、現在のpathnameを基準にAPIパスを組み立てる。
+const BASE = window.location.pathname.endsWith('/')
+  ? window.location.pathname
+  : window.location.pathname + '/';
+
+async function post(url, body = {}) {
+  const fd = new FormData();
+  Object.entries(body).forEach(([k, v]) => fd.append(k, v));
+  const r = await fetch(BASE + url, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': CSRF },
+    body: fd,
+  });
+  return r.json();
+}
+
+function showResult(id, ok, msg) {
+  const el = document.getElementById(id);
+  el.className = 'result ' + (ok ? 'success' : 'error');
+  el.textContent = msg;
+}
+
+async function doRun() {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.textContent = '送信中...';
+  try {
+    const d = await post('api/run');
+    showResult('run-result', d.ok, d.ok ? 'Discordへの送信が完了しました。' : d.error);
+    if (d.ok) refreshStatus();
+  } catch(e) {
+    showResult('run-result', false, '通信エラーが発生しました。');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '今すぐDiscordに送信';
+  }
+}
+
+async function doSchedule() {
+  const time = document.getElementById('sched-time').value;
+  if (!time) return;
+  try {
+    const d = await post('api/schedule', { time });
+    showResult('sched-result', d.ok, d.ok
+      ? `スケジュールを保存しました。次回：${d.next_run}`
+      : d.error);
+    if (d.ok) document.getElementById('next-run').textContent = d.next_run;
+  } catch(e) {
+    showResult('sched-result', false, '通信エラーが発生しました。');
+  }
+}
+
+async function refreshStatus() {
+  try {
+    const d = await fetch(BASE + 'api/status').then(r => r.json());
+    if (d.logs && d.logs.length > 0) {
+      document.getElementById('last-run').textContent = d.logs[0].at;
+      // ログテーブルを再描画
+      const rows = d.logs.map(l => {
+        const badge = l.status === 'success'
+          ? '<span class="badge-ok">成功</span>'
+          : '<span class="badge-err">失敗</span>';
+        return `<tr><td>${l.at}</td><td>${badge}</td><td>${l.summary}</td></tr>`;
+      }).join('');
+      document.getElementById('log-wrap').innerHTML =
+        `<table class="log-table"><tr><th>日時</th><th>結果</th><th>概要</th></tr>${rows}</table>`;
+    }
+  } catch(_) {}
+}
+</script>
+</body>
+</html>

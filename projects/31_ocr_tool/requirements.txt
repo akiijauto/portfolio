@@ -1,0 +1,10 @@
+Flask
+Flask-WTF
+python-dotenv
+gunicorn
+pytesseract
+opencv-python-headless
+pdf2image
+Pillow
+google-genai
+anthropic

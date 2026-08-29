@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>カテゴリ管理 — 家計簿</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <span class="logo">家計簿ダッシュボード</span>
+  <nav><a href="{{ url_for('.index') }}" class="btn-nav-sub">← ダッシュボード</a></nav>
+</header>
+<div class="container">
+  <div class="box form-box">
+    <h2>カテゴリを追加</h2>
+    <form method="post" action="{{ url_for('.categories') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="cat-row">
+        <input type="text" name="name" maxlength="50" required placeholder="カテゴリ名（例：医療費）">
+        <input type="color" name="color" value="#6366f1">
+        <button type="submit" class="btn-primary">追加</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="box">
+    <h2>カテゴリ一覧</h2>
+    {% if categories %}
+    <ul class="cat-list">
+      {% for cat in categories %}
+      <li>
+        <span class="cat-dot" style="background:{{ cat.color }}"></span>
+        <span class="cat-name">{{ cat.name }}</span>
+        <span class="cat-count">{{ cat.transactions | length }}件</span>
+        <form method="post" action="{{ url_for('.category_delete', cat_id=cat.id) }}"
+              onsubmit="return confirm('「{{ cat.name }}」と関連する支出データもすべて削除されます。よろしいですか？')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn-del">削除</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty">カテゴリがありません。</div>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>

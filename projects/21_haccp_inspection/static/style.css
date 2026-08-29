@@ -1,0 +1,80 @@
+/* 写真ベース 衛生点検・HACCP記録サポート スタイル */
+header { background: linear-gradient(135deg, #0e7490, #0891b2, #38bdf8); color: white; padding: 20px 24px 16px; }
+header h1 { font-size: 22px; }
+header p  { font-size: 13px; opacity: .85; margin-top: 4px; }
+
+.tab-nav { display: flex; background: #0e7490; padding: 0 24px; overflow-x: auto; }
+.tab { padding: 10px 20px; color: rgba(255,255,255,.65); font-size: 14px; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; }
+.tab:hover { color: white; }
+.tab.active { color: white; border-bottom-color: white; font-weight: bold; }
+
+.container { max-width: 800px; margin: 24px auto; padding: 0 16px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.box { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.box h2 { font-size: 15px; color: #1e293b; margin-bottom: 14px; font-weight: 700; }
+.box h3 { font-size: 13px; color: #0e7490; margin: 14px 0 6px; font-weight: 700; }
+.box h3:first-of-type { margin-top: 4px; }
+.box p { font-size: 13px; color: #475569; line-height: 1.7; }
+.box ul { font-size: 13px; color: #475569; line-height: 1.8; padding-left: 20px; }
+
+.card-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.card-header h2 { margin-bottom: 0; }
+
+.form-grid { display: grid; gap: 14px; }
+label { display: block; font-size: 12px; color: #64748b; margin-bottom: 6px; font-weight: 600; }
+.req { color: #dc2626; font-size: 10px; background: #fee2e2; padding: 1px 5px; border-radius: 4px; margin-left: 4px; }
+
+/* ── カテゴリ選択 ── */
+.category-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+.category-chip { display: flex; align-items: center; gap: 6px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 20px; padding: 6px 14px; cursor: pointer; font-size: 12px; font-weight: normal; transition: background .15s; }
+.category-chip input { position: absolute; opacity: 0; pointer-events: none; }
+.category-chip:has(input:checked) { background: #0891b2; color: white; border-color: #0891b2; font-weight: 700; }
+.category-chip:hover { background: #e0f2fe; }
+
+/* ── 画像アップロード ── */
+.upload-row input[type="file"] { font-size: 13px; }
+.image-preview { max-width: 100%; max-height: 280px; border-radius: 8px; margin-top: 10px; border: 1px solid #e2e8f0; }
+
+.btn-row { margin-top: 16px; }
+.btn-primary  { background: #0891b2; color: white; }
+.btn-primary:hover { background: #0e7490; }
+.btn-secondary { background: #f0f9ff; color: #0e7490; border: 1px solid #bae6fd; }
+.btn-secondary:hover { background: #e0f2fe; }
+
+.progress-wrap { margin-top: 12px; }
+.progress-bar  { background: #cffafe; border-radius: 8px; height: 8px; overflow: hidden; }
+.progress-fill { background: linear-gradient(90deg, #0891b2, #38bdf8); height: 100%; animation: indeterminate 1.2s ease-in-out infinite; }
+.progress-text { font-size: 12px; color: #0e7490; margin-top: 6px; }
+@keyframes indeterminate { 0% { width: 10%; margin-left: 0; } 50% { width: 60%; margin-left: 20%; } 100% { width: 10%; margin-left: 90%; } }
+
+/* ── 判定バッジ ── */
+.judge-badge { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 12px; border-radius: 20px; margin-top: 4px; }
+.judge-ok      { background: #dcfce7; color: #15803d; }
+.judge-warn    { background: #fef3c7; color: #b45309; }
+.judge-ng      { background: #fee2e2; color: #dc2626; }
+.judge-unknown { background: #f1f5f9; color: #64748b; }
+
+/* ── 点検結果 ── */
+.result-header { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 8px; }
+.result-thumb { width: 96px; height: 96px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0; flex-shrink: 0; }
+.result-category { font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+
+.check-list { display: flex; flex-direction: column; gap: 8px; }
+.check-row { display: flex; gap: 10px; align-items: flex-start; background: #f8fafc; border-radius: 8px; padding: 8px 12px; }
+.check-judge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px; white-space: nowrap; }
+.check-item { font-size: 12px; font-weight: 700; color: #1e293b; }
+.check-comment { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+.record-comment { background: #f0f9ff; border-radius: 8px; padding: 10px 14px; }
+
+/* ── 点検記録一覧 ── */
+.log-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+.log-row:last-child { border-bottom: none; }
+.log-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0; flex-shrink: 0; }
+.log-meta { display: flex; gap: 8px; align-items: center; font-size: 12px; color: #64748b; flex-wrap: wrap; }
+.log-time { font-weight: 700; color: #1e293b; }
+.log-category { color: #0e7490; }
+.log-comment { font-size: 12px; color: #475569; margin-top: 4px; }
+
+.empty-note { font-size: 12px; color: #94a3b8; }

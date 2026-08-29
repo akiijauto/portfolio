@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>外部API連携ハブ</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <h1>外部API連携ハブ</h1>
+  <p>天気・為替・ニュース要約をまとめてチェック</p>
+</header>
+
+<div class="container">
+  <div class="tab-nav">
+    <div class="tab active" onclick="switchTab('weather')">① 天気</div>
+    <div class="tab"       onclick="switchTab('exchange')">② 為替</div>
+    <div class="tab"       onclick="switchTab('news')">③ ニュース</div>
+  </div>
+
+  <!-- ① 天気 -->
+  <div class="tab-content active" id="tab-weather">
+    <div class="box">
+      <h2>現在の天気を検索</h2>
+      <div class="row">
+        <input type="text" id="city" placeholder="都市名（例：Tokyo, Osaka, New York）">
+        <button class="btn btn-primary" onclick="doWeather()">検索</button>
+      </div>
+      <p class="hint-text">都市名は英語で入力してください（例: Tokyo, Osaka, New York）。</p>
+      <div class="loading" id="w-loading">取得中...</div>
+      <div class="error-msg" id="w-error"></div>
+      <div class="result" id="w-result">
+        <div class="weather-label" id="w-city"></div>
+        <div class="weather-big" id="w-temp"></div>
+        <div class="weather-sub" id="w-detail"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 為替 -->
+  <div class="tab-content" id="tab-exchange">
+    <div class="box">
+      <h2>為替レート換算</h2>
+      <div class="row">
+        <input type="number" id="amount" value="1" min="0.01" step="any" placeholder="金額">
+        <select id="from-cur">
+          {% for c in currencies %}
+          <option value="{{ c }}" {% if c == 'USD' %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+        <span style="flex:0;padding:9px 4px;color:#888;">→</span>
+        <select id="to-cur">
+          {% for c in currencies %}
+          <option value="{{ c }}" {% if c == 'JPY' %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-primary" onclick="doExchange()">換算</button>
+      </div>
+      <p class="hint-text">変換したい金額と、変換元・変換先の通貨を選択して「換算」を押してください。</p>
+      <div class="loading" id="e-loading">取得中...</div>
+      <div class="error-msg" id="e-error"></div>
+      <div class="result" id="e-result">
+        <div class="rate-big" id="e-converted"></div>
+        <div class="rate-sub" id="e-rate"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ ニュース -->
+  <div class="tab-content" id="tab-news">
+    <div class="box">
+      <h2>NHK最新ニュース要約</h2>
+      <p style="font-size:13px;color:#666;margin-bottom:14px;">NHKの最新ニュースをAIが3行でまとめます（30分キャッシュ）</p>
+      <button class="btn btn-primary" onclick="doNews()">最新ニュースを要約する</button>
+      <div class="loading" id="n-loading">NHK RSSを取得してAIが要約中...</div>
+      <div class="error-msg" id="n-error"></div>
+      <div class="result" id="n-result">
+        <div class="news-summary" id="n-summary"></div>
+        <details>
+          <summary style="font-size:12px;color:#888;cursor:pointer;margin-bottom:6px;">元の見出し一覧</summary>
+          <div class="news-list" id="n-headlines"></div>
+        </details>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+async function post(url, body) {
+  const fd = new FormData();
+  Object.entries(body).forEach(([k, v]) => fd.append(k, v));
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': CSRF },
+    body: fd,
+  });
+  return r.json();
+}
+
+function setLoading(prefix, on) {
+  document.getElementById(prefix + '-loading').classList.toggle('visible', on);
+}
+function setError(prefix, msg) {
+  const el = document.getElementById(prefix + '-error');
+  el.textContent = msg;
+  el.classList.toggle('visible', !!msg);
+}
+function setResult(prefix, on) {
+  document.getElementById(prefix + '-result').classList.toggle('visible', on);
+}
+
+async function doWeather() {
+  const city = document.getElementById('city').value.trim();
+  if (!city) return;
+  setLoading('w', true); setError('w', ''); setResult('w', false);
+  try {
+    const d = await post('api/weather', { city });
+    if (!d.ok) { setError('w', d.error); return; }
+    document.getElementById('w-city').textContent = d.city;
+    document.getElementById('w-temp').textContent = d.temp + '°C';
+    document.getElementById('w-detail').textContent =
+      d.weather + '　風速 ' + d.wind + ' km/h';
+    setResult('w', true);
+  } catch(e) {
+    setError('w', '通信エラーが発生しました。');
+  } finally {
+    setLoading('w', false);
+  }
+}
+
+async function doExchange() {
+  const from_ = document.getElementById('from-cur').value;
+  const to    = document.getElementById('to-cur').value;
+  const amount = document.getElementById('amount').value;
+  setLoading('e', true); setError('e', ''); setResult('e', false);
+  try {
+    const d = await post('api/exchange', { from: from_, to, amount });
+    if (!d.ok) { setError('e', d.error); return; }
+    document.getElementById('e-converted').textContent =
+      amount + ' ' + d.from + ' = ' + d.converted.toLocaleString() + ' ' + d.to;
+    document.getElementById('e-rate').textContent =
+      '1 ' + d.from + ' = ' + d.rate + ' ' + d.to + '　（' + d.date + ' 時点）';
+    setResult('e', true);
+  } catch(e) {
+    setError('e', '通信エラーが発生しました。');
+  } finally {
+    setLoading('e', false);
+  }
+}
+
+async function doNews() {
+  setLoading('n', true); setError('n', ''); setResult('n', false);
+  try {
+    const d = await post('api/news', {});
+    if (!d.ok) { setError('n', d.error); return; }
+    document.getElementById('n-summary').textContent = d.summary;
+    document.getElementById('n-headlines').innerHTML =
+      d.headlines.map(h => `<div>${h}</div>`).join('');
+    setResult('n', true);
+  } catch(e) {
+    setError('n', '通信エラーが発生しました。');
+  } finally {
+    setLoading('n', false);
+  }
+}
+</script>
+</body>
+</html>

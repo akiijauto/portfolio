@@ -1,0 +1,33 @@
+# 機密情報
+.env
+**/.env
+.env.bak*
+
+# 仮想環境
+.venv/
+venv/
+
+# Pythonキャッシュ
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# ローカルDB（ユーザーデータ・顧客情報・収支データを含むため絶対に追跡しない）
+*.db
+*.sqlite
+*.sqlite3
+instance/
+
+# 各アプリが生成するローカルデータ
+projects/05_aliexpress_monitor/data/*.json
+
+# OCRツールの言語データ（数十MB。README手順で取得する）
+projects/31_ocr_tool/tessdata/
+
+# エディタ・OS
+.vscode/
+*.code-workspace
+.DS_Store
+Thumbs.db

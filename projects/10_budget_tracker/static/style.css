@@ -1,0 +1,74 @@
+/* 家計簿ダッシュボード スタイル */
+header { background: #6366f1; color: white; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+.logo { font-size: 17px; font-weight: bold; }
+nav { display: flex; gap: 8px; align-items: center; }
+.btn-nav     { background: white; color: #6366f1; font-weight: bold; padding: 7px 16px; border-radius: 8px; font-size: 13px; text-decoration: none; }
+.btn-nav-sub { background: rgba(255,255,255,.15); color: white; padding: 7px 14px; border-radius: 8px; font-size: 13px; text-decoration: none; }
+.btn-logout  { background: transparent; border: 1px solid rgba(255,255,255,.4); color: white; padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; }
+
+.container { max-width: 960px; margin: 28px auto; padding: 0 16px; }
+
+/* 当月合計バー */
+.summary-bar { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border-radius: 14px; padding: 20px 28px; margin-bottom: 20px; }
+.summary-label { font-size: 12px; opacity: .8; margin-bottom: 4px; }
+.summary-value { font-size: 32px; font-weight: bold; }
+
+/* グラフ2列 */
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+@media (max-width: 640px) { .charts-grid { grid-template-columns: 1fr; } }
+.chart-wrap { height: 220px; display: flex; align-items: center; justify-content: center; position: relative; }
+.chart-loading { display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 12px; color: #94a3b8; }
+.spinner { width: 28px; height: 28px; border: 3px solid #e0e7ff; border-top-color: #6366f1; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 汎用ボックス */
+.box { background: white; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 4px rgba(0,0,0,.07); margin-bottom: 20px; }
+.box h2 { font-size: 14px; color: #555; font-weight: bold; margin-bottom: 16px; }
+.box-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.box-header h2 { margin-bottom: 0; }
+.btn-sm { background: #6366f1; color: white; padding: 5px 12px; border-radius: 6px; font-size: 12px; text-decoration: none; font-weight: bold; }
+
+/* 取引テーブル */
+.tx-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tx-table th { text-align: left; color: #999; font-weight: normal; padding: 4px 8px; border-bottom: 1px solid #f1f5f9; }
+.tx-table td { padding: 9px 8px; border-bottom: 1px solid #f8fafc; vertical-align: middle; }
+.badge { padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; white-space: nowrap; }
+.memo { color: #666; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.amount { font-weight: bold; text-align: right; white-space: nowrap; }
+.btn-del { background: none; border: 1px solid #fca5a5; color: #dc2626; padding: 3px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+.btn-del:hover { background: #fee2e2; }
+
+/* フォーム共通 */
+.form-box { max-width: 480px; margin: 0 auto 20px; }
+label { display: block; font-size: 13px; color: #555; margin-bottom: 14px; }
+label input, label select { display: block; width: 100%; margin-top: 4px; padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+.form-actions { display: flex; gap: 10px; margin-top: 20px; }
+.btn-primary { background: #6366f1; color: white; border: none; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; flex: 1; }
+.btn-primary:hover { opacity: .88; }
+.btn-cancel { background: #f1f5f9; color: #555; border: none; padding: 10px 22px; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; text-align: center; }
+
+/* カテゴリ */
+.cat-row { display: flex; gap: 8px; align-items: center; }
+.cat-row input[type="text"] { flex: 1; padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+.cat-row input[type="color"] { width: 44px; height: 40px; border: 1px solid #ddd; border-radius: 8px; padding: 2px; cursor: pointer; }
+.cat-row .btn-primary { flex: unset; padding: 9px 18px; }
+.cat-list { list-style: none; margin: 0; padding: 0; }
+.cat-list li { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+.cat-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.cat-name { flex: 1; }
+.cat-count { font-size: 12px; color: #aaa; }
+
+/* 認証ページ */
+.auth-page { background: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.auth-card { background: white; border-radius: 14px; padding: 36px 40px; width: 340px; box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+.auth-card h1 { font-size: 17px; color: #6366f1; margin-bottom: 4px; }
+.auth-card h2 { font-size: 20px; font-weight: bold; margin-bottom: 22px; color: #333; }
+.auth-card label { display: block; font-size: 13px; color: #555; margin-bottom: 14px; }
+.auth-card input { display: block; width: 100%; margin-top: 4px; padding: 9px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+.auth-card .btn-primary { width: 100%; margin-top: 6px; }
+.auth-link { text-align: center; font-size: 13px; margin-top: 18px; }
+.auth-link a { color: #6366f1; text-decoration: none; }
+
+/* フラッシュ */
+.flash { background: #fee2e2; color: #dc2626; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; }
+.empty { text-align: center; color: #bbb; padding: 28px; font-size: 13px; }

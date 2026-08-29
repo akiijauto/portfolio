@@ -1,0 +1,52 @@
+/* 外部API連携ハブ スタイル */
+header { background: #0369a1; color: white; padding: 16px 24px; }
+header h1 { font-size: 20px; }
+header p  { font-size: 13px; opacity: .8; margin-top: 4px; }
+
+.container { max-width: 720px; margin: 28px auto; padding: 0 16px; }
+
+.tab-nav { display: flex; gap: 2px; background: #e0f2fe; padding: 6px; border-radius: 10px; margin-bottom: 20px; }
+.tab { flex: 1; text-align: center; padding: 9px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; color: #0369a1; }
+.tab:hover { background: #bae6fd; }
+.tab.active { background: #0369a1; color: white; }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.box { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.box h2 { font-size: 16px; margin-bottom: 16px; color: #333; }
+
+.row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.row input, .row select { flex: 1; min-width: 120px; }
+.row .btn { white-space: nowrap; }
+
+.btn-primary { background: #0369a1; color: white; }
+.btn-block { width: 100%; }
+
+.result { margin-top: 16px; display: none; }
+.result.visible { display: block; }
+
+.weather-big { font-size: 48px; font-weight: bold; color: #0369a1; margin: 8px 0; }
+.weather-label { font-size: 18px; color: #555; margin-bottom: 4px; }
+.weather-sub { font-size: 13px; color: #888; }
+
+.rate-big { font-size: 32px; font-weight: bold; color: #0369a1; margin: 8px 0; }
+.rate-sub { font-size: 13px; color: #888; }
+
+.news-summary { background: #f0f9ff; border-left: 4px solid #0369a1; padding: 14px 16px; border-radius: 0 8px 8px 0; font-size: 14px; line-height: 1.8; white-space: pre-wrap; margin-bottom: 12px; }
+.news-list { font-size: 12px; color: #777; line-height: 1.7; }
+
+.error-msg { background: #fee2e2; color: #dc2626; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-top: 12px; display: none; }
+.error-msg.visible { display: block; }
+
+.loading { font-size: 13px; color: #0369a1; margin-top: 10px; display: none; }
+.loading.visible { display: block; }
+
+.cache-badge { font-size: 11px; background: #dcfce7; color: #15803d; border-radius: 20px; padding: 2px 8px; margin-left: 8px; }
+
+.hint-text { font-size: 12px; color: #888; margin-top: 8px; }
+
+@media(max-width:420px) {
+  .tab { font-size: 12px; padding: 8px 4px; }
+  .row input, .row select { min-width: 100%; }
+}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ 'メモ編集' if memo else 'メモ作成' }} - メモアプリ{% endblock %}
+{% block container_class %} narrow{% endblock %}
+
+{% block content %}
+<div class="box">
+  <h2>{{ 'メモを編集' if memo else '新規メモ作成' }}</h2>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="title">タイトル</label>
+      <input type="text" id="title" name="title" value="{{ title }}" required autofocus>
+    </div>
+    <div class="field">
+      <label for="body">本文</label>
+      <textarea id="body" name="body" rows="8">{{ body }}</textarea>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button type="submit" class="btn btn-primary">{{ '更新する' if memo else '作成する' }}</button>
+      <a href="{{ url_for('.memo_list') }}" class="btn btn-secondary">一覧に戻る</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

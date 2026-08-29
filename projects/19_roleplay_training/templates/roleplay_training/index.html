@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>接客・クレーム対応ロールプレイAI</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <h1>接客・クレーム対応ロールプレイAI</h1>
+  <p>AI顧客との対話で接客・クレーム対応を疑似訓練。終了後にAIが採点・フィードバックします</p>
+</header>
+
+<nav class="tab-nav">
+  <div class="tab active" id="nav-setup" onclick="switchTab('setup')">① シナリオ選択</div>
+  <div class="tab" id="nav-chat" onclick="switchTab('chat')">② ロールプレイ</div>
+  <div class="tab" id="nav-score" onclick="switchTab('score')">③ 採点結果</div>
+</nav>
+
+<div class="container">
+
+  <!-- ① シナリオ選択 -->
+  <div class="tab-content active" id="tab-setup">
+    <div class="box">
+      <h2>シナリオを選んで開始</h2>
+      <div class="form-grid">
+        <div class="full">
+          <label>シチュエーション</label>
+          <div class="scenario-grid">
+            {% for s in scenarios %}
+            <label class="scenario-card">
+              <input type="radio" name="scenario" value="{{ s.id }}" {% if loop.first %}checked{% endif %}>
+              <div class="scenario-card-body">
+                <div class="scenario-industry">{{ s.industry }}</div>
+                <div class="scenario-label">{{ s.label }}</div>
+              </div>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="full">
+          <label>難易度</label>
+          <div class="goal-grid">
+            {% for key, desc in difficulties.items() %}
+            <label class="goal-chip">
+              <input type="radio" name="difficulty" value="{{ key }}" {% if key == 'normal' %}checked{% endif %}>
+              <span>{{ 'ふつう' if key == 'normal' else '難しい' }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="start-btn" onclick="startRoleplay()">▶ ロールプレイを開始する</button>
+      </div>
+      <div class="progress-wrap" id="start-progress" style="display:none;">
+        <div class="progress-bar"><div class="progress-fill" id="start-progress-fill"></div></div>
+        <div class="progress-text">AI顧客が来店しました…</div>
+      </div>
+      <div class="error-box" id="start-error"></div>
+    </div>
+  </div>
+
+  <!-- ② ロールプレイ -->
+  <div class="tab-content" id="tab-chat">
+    <div class="box">
+      <div class="card-header">
+        <h2 id="chat-title">ロールプレイ中</h2>
+        <span class="turn-counter" id="turn-counter">0 / 8 ターン</span>
+      </div>
+      <div class="chat-window" id="chat-window"></div>
+      <div class="chat-input-row">
+        <textarea id="staff-input" rows="2" maxlength="500" placeholder="スタッフとして対応するセリフを入力…"></textarea>
+        <button class="btn btn-primary" id="send-btn" onclick="sendReply()">送信</button>
+      </div>
+      <div class="progress-wrap" id="chat-progress" style="display:none;">
+        <div class="progress-bar"><div class="progress-fill" id="chat-progress-fill"></div></div>
+        <div class="progress-text">AI顧客が応答中…</div>
+      </div>
+      <div class="error-box" id="chat-error"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="score-btn" onclick="doScore()">🏁 ロールプレイを終了して採点する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 採点結果 -->
+  <div class="tab-content" id="tab-score">
+    <div class="box" id="score-progress-box" style="display:none;">
+      <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill" id="score-progress-fill"></div></div>
+        <div class="progress-text">AIが採点中…</div>
+      </div>
+    </div>
+    <div class="error-box" id="score-error"></div>
+    <div id="score-result"></div>
+    <div class="btn-row" id="score-restart-row" style="display:none;">
+      <button class="btn btn-primary" onclick="restart()">🔄 別のシナリオで再挑戦する</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

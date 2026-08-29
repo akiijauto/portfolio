@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Markdown→スライド自動生成</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>Markdown→スライド自動生成</h1>
+    <p>Markdownを入力すると、HTMLスライド（reveal.js）プレビューとPowerPointファイルを生成できます。</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flash">
+          {% for category, message in messages %}
+            <li class="flash-{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('preview') }}" onsubmit="return startPreviewLoading(this)">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <label for="markdown">Markdownテキスト</label>
+      <textarea id="markdown" name="markdown" rows="14" placeholder="# タイトル
+- 箇条書き1
+- 箇条書き2
+
+---
+
+# 2枚目のタイトル
+- 箇条書き1"></textarea>
+
+      <label for="theme">テーマカラー</label>
+      <select id="theme" name="theme">
+        {% for theme in themes %}
+          <option value="{{ theme }}">{{ theme }}</option>
+        {% endfor %}
+      </select>
+
+      <label class="checkbox">
+        <input type="checkbox" name="optimize">
+        AIに章立て・スライド構成を最適化してもらう（任意）
+      </label>
+
+      <button type="submit" id="preview-submit-btn">プレビューを生成</button>
+      <p id="preview-loading" class="loading" hidden>⏳ 生成中です。しばらくお待ちください…</p>
+    </form>
+  </div>
+
+  <script>
+    function startPreviewLoading(form) {
+      document.getElementById("preview-submit-btn").disabled = true;
+      document.getElementById("preview-loading").hidden = false;
+      return true;
+    }
+  </script>
+</body>
+</html>

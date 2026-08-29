@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>写真ベース 衛生点検・HACCP記録サポート</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <h1>写真ベース 衛生点検・HACCP記録サポート</h1>
+  <p>点検対象の写真をAIが確認し、HACCP点検記録の判定・コメントを自動作成します</p>
+</header>
+
+<nav class="tab-nav">
+  <div class="tab active" id="nav-inspect" onclick="switchTab('inspect')">① 点検実施</div>
+  <div class="tab" id="nav-log" onclick="switchTab('log')">② 本日の点検記録</div>
+</nav>
+
+<div class="container">
+
+  <!-- ① 点検実施 -->
+  <div class="tab-content active" id="tab-inspect">
+    <div class="box">
+      <h2>点検対象の写真をアップロード</h2>
+      <div class="form-grid">
+        <div class="full">
+          <label>点検カテゴリ <span class="req">必須</span></label>
+          <div class="category-grid">
+            {% for c in categories %}
+            <label class="category-chip">
+              <input type="radio" name="category" value="{{ c.id }}" {% if loop.first %}checked{% endif %}>
+              <span>{{ c.label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="full">
+          <label>写真 <span class="req">必須</span></label>
+          <div class="upload-row">
+            <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp" onchange="previewImage()">
+          </div>
+          <img id="image-preview" class="image-preview" style="display:none;">
+        </div>
+        <div class="full">
+          <label>補足コメント（任意）</label>
+          <textarea id="notes" rows="2" maxlength="300" placeholder="例: 開店前の冷蔵庫チェックです"></textarea>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="inspect-btn" onclick="doInspect()">📷 AIで点検する</button>
+      </div>
+      <div class="progress-wrap" id="inspect-progress" style="display:none;">
+        <div class="progress-bar"><div class="progress-fill"></div></div>
+        <div class="progress-text">AIが写真を確認中…</div>
+      </div>
+      <div class="error-box" id="inspect-error"></div>
+    </div>
+
+    <div id="latest-result"></div>
+  </div>
+
+  <!-- ② 本日の点検記録 -->
+  <div class="tab-content" id="tab-log">
+    <div class="box">
+      <div class="card-header">
+        <h2>本日の点検記録</h2>
+        <button class="btn btn-secondary" onclick="downloadLog()">⬇ 記録をテキストでダウンロード</button>
+      </div>
+      <p class="empty-note" id="log-empty">まだ点検記録がありません</p>
+      <div id="log-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

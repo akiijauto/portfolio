@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>支出を追加 — 家計簿</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <span class="logo">家計簿ダッシュボード</span>
+  <nav><a href="{{ url_for('.index') }}" class="btn-nav-sub">← ダッシュボード</a></nav>
+</header>
+<div class="container">
+  <div class="box form-box">
+    <h2>支出を追加</h2>
+    {% for msg in get_flashed_messages() %}
+    <div class="flash">{{ msg }}</div>
+    {% endfor %}
+    <form method="post" action="{{ url_for('.transaction_new') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>金額（円）
+        <input type="number" name="amount" min="1" required autofocus placeholder="1000">
+      </label>
+      <label>カテゴリ
+        <select name="category_id" required>
+          <option value="">— 選択 —</option>
+          {% for cat in categories %}
+          <option value="{{ cat.id }}">{{ cat.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>日付
+        <input type="date" name="date" value="{{ today.isoformat() }}" required>
+      </label>
+      <label>メモ（任意）
+        <input type="text" name="memo" maxlength="200" placeholder="例：ランチ">
+      </label>
+      <div class="form-actions">
+        <a href="{{ url_for('.index') }}" class="btn-cancel">キャンセル</a>
+        <button type="submit" class="btn-primary">登録する</button>
+      </div>
+    </form>
+  </div>
+</div>
+</body>
+</html>

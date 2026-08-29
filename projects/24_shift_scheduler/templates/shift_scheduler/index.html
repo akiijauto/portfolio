@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>シフト作成アシスタントAI</title>
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+<link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <h1>📅 シフト作成アシスタントAI</h1>
+  <p class="header-tagline">スタッフの希望条件と必要人数を入力するだけで、AIが1週間分のシフト案を作成します</p>
+</header>
+
+<div class="tab-nav">
+  <button class="tab-btn active" data-tab="tab-input" onclick="switchTab('tab-input')">① 条件入力</button>
+  <button class="tab-btn" data-tab="tab-result" onclick="switchTab('tab-result')">② シフト案</button>
+</div>
+
+<div class="container">
+
+  <!-- ① 条件入力 -->
+  <div id="tab-input" class="tab-pane active">
+    <div class="card">
+      <div class="card-header">
+        <span>スタッフ一覧（最大20名）</span>
+        <button class="btn-sub" onclick="loadSampleData()">サンプルデータを読み込む</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr><th>氏名</th><th>出勤可能曜日</th><th>希望勤務時間</th><th>週の上限時間</th><th></th></tr>
+        </thead>
+        <tbody id="staff-rows"></tbody>
+      </table>
+      <button class="btn-sub" onclick="addStaffRow()">＋ スタッフを追加</button>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span>曜日別 営業時間・必要人数</span></div>
+      <table class="data-table">
+        <thead>
+          <tr><th>曜日</th><th>営業時間</th><th>必要人数</th></tr>
+        </thead>
+        <tbody id="req-rows"></tbody>
+      </table>
+
+      <label for="notes" style="margin-top:16px;">追加の考慮事項（任意）</label>
+      <textarea id="notes" maxlength="1000" rows="4" placeholder="例: 土曜は来客が多いため、ベテランを1名以上配置したい。"></textarea>
+      <div class="char-count"><span id="char-count">0</span> / 1000</div>
+
+      <button id="generate-btn" class="btn-primary" onclick="doGenerate()">AIでシフトを作成する</button>
+    </div>
+    <div id="input-error" class="result-err" style="display:none;"></div>
+  </div>
+
+  <!-- ② シフト案 -->
+  <div id="tab-result" class="tab-pane">
+    <div id="result-empty" class="card empty-state">
+      まだシフト案がありません。「①条件入力」タブで条件を入力し、「AIでシフトを作成する」を押してください。
+    </div>
+    <div id="result-content" style="display:none;">
+      <div id="shift-table-wrap"></div>
+      <div class="card">
+        <div class="card-header"><span>⚠️ 確認が必要な点</span></div>
+        <ul id="concern-list" class="insight-list"></ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><span>💡 改善提案</span></div>
+        <ul id="suggestion-list" class="insight-list"></ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

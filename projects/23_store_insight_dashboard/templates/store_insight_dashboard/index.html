@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>店舗改善インサイトダッシュボード</title>
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+<link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<header>
+  <h1>📊 店舗改善インサイトダッシュボード</h1>
+  <p class="header-tagline">日々の売上・客数データと現場メモから、AIが改善ポイントを発見します</p>
+</header>
+
+<div class="tab-nav">
+  <button class="tab-btn active" data-tab="tab-input" onclick="switchTab('tab-input')">① データ入力</button>
+  <button class="tab-btn" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">② ダッシュボード</button>
+</div>
+
+<div class="container">
+
+  <!-- ① データ入力 -->
+  <div id="tab-input" class="tab-pane active">
+    <div class="card">
+      <div class="card-header">
+        <span>日次データ（最大31日分）</span>
+        <button class="btn-sub" onclick="loadSampleData()">サンプルデータを読み込む</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr><th>日付</th><th>売上(円)</th><th>客数(人)</th><th>スタッフ人数</th><th></th></tr>
+        </thead>
+        <tbody id="data-rows"></tbody>
+      </table>
+      <button class="btn-sub" onclick="addRow()">＋ 行を追加</button>
+
+      <label for="notes" style="margin-top:16px;">現場からのメモ・気づき（任意）</label>
+      <textarea id="notes" maxlength="1000" rows="4" placeholder="例: 週末は混雑して接客が手薄になりがち。常連客からSNS割引が好評。"></textarea>
+      <div class="char-count"><span id="char-count">0</span> / 1000</div>
+
+      <button id="analyze-btn" class="btn-primary" onclick="doAnalyze()">AIで分析する</button>
+    </div>
+    <div id="input-error" class="result-err" style="display:none;"></div>
+  </div>
+
+  <!-- ② ダッシュボード -->
+  <div id="tab-dashboard" class="tab-pane">
+    <div id="dashboard-empty" class="card empty-state">
+      まだ分析結果がありません。「①データ入力」タブでデータを入力し、「AIで分析する」を押してください。
+    </div>
+    <div id="dashboard-content" style="display:none;">
+      <div class="card">
+        <div class="card-header"><span>売上・客数の推移</span></div>
+        <canvas id="trend-chart" height="120"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-header"><span>AIによる傾向の要約</span></div>
+        <p id="trend-summary"></p>
+      </div>
+      <div class="insight-grid">
+        <div class="card">
+          <div class="card-header"><span>👍 良い点</span></div>
+          <ul id="good-points" class="insight-list"></ul>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>⚠️ 気になる点</span></div>
+          <ul id="concern-points" class="insight-list"></ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span>✅ 改善アクション提案</span></div>
+        <div id="action-list"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

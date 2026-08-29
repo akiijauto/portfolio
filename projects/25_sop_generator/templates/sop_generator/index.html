@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>業務マニュアル・SOP自動生成</title>
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+<link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <h1>📋 業務マニュアル・SOP自動生成</h1>
+  <p class="header-tagline">業務名とざっくりした手順を入力するだけで、AIが新人教育用のマニュアルを作成します</p>
+</header>
+
+<div class="tab-nav">
+  <button class="tab-btn active" data-tab="tab-input" onclick="switchTab('tab-input')">① 入力</button>
+  <button class="tab-btn" data-tab="tab-result" onclick="switchTab('tab-result')">② マニュアル</button>
+</div>
+
+<div class="container">
+
+  <!-- ① 入力 -->
+  <div id="tab-input" class="tab-pane active">
+    <div class="card">
+      <div class="card-header">
+        <span>業務情報の入力</span>
+        <button class="btn-sub" onclick="loadSampleData()">サンプルを読み込む</button>
+      </div>
+
+      <label for="task-name">業務名</label>
+      <input type="text" id="task-name" maxlength="100" placeholder="例: レジ締め作業">
+
+      <label for="target-audience" style="margin-top:12px;">対象者</label>
+      <input type="text" id="target-audience" maxlength="100" placeholder="例: 新人スタッフ・アルバイト">
+
+      <label for="rough-steps" style="margin-top:12px;">ざっくりした手順・メモ</label>
+      <textarea id="rough-steps" maxlength="2000" rows="8" placeholder="例: レジの現金を数える。レジ機の精算ボタンを押す。レポートを印刷して金庫に保管する。差額があれば店長に報告する。"></textarea>
+      <div class="char-count"><span id="rough-count">0</span> / 2000</div>
+
+      <label for="notes" style="margin-top:12px;">その他の補足（任意）</label>
+      <textarea id="notes" maxlength="1000" rows="3" placeholder="例: 差額が1000円以上ある場合は必ず防犯カメラを確認する。"></textarea>
+      <div class="char-count"><span id="notes-count">0</span> / 1000</div>
+
+      <button id="generate-btn" class="btn-primary" onclick="doGenerate()">AIでマニュアルを作成する</button>
+    </div>
+    <div id="input-error" class="result-err" style="display:none;"></div>
+  </div>
+
+  <!-- ② マニュアル -->
+  <div id="tab-result" class="tab-pane">
+    <div id="result-empty" class="card empty-state">
+      まだマニュアルがありません。「①入力」タブで情報を入力し、「AIでマニュアルを作成する」を押してください。
+    </div>
+    <div id="result-content" style="display:none;">
+      <div class="card">
+        <div class="card-header">
+          <span id="manual-title"></span>
+          <div>
+            <button class="btn-sub" onclick="copyManual()">📋 コピー</button>
+            <button class="btn-sub" onclick="downloadManual()">⬇ ダウンロード</button>
+          </div>
+        </div>
+        <p id="manual-purpose" class="manual-purpose"></p>
+      </div>
+      <div class="card">
+        <div class="card-header"><span>🧰 準備するもの</span></div>
+        <ul id="preparation-list" class="insight-list"></ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><span>📝 作業手順</span></div>
+        <div id="steps-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span>⚠️ よくあるミスと対策</span></div>
+        <ul id="mistakes-list" class="insight-list"></ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><span>✅ 完了チェックリスト</span></div>
+        <ul id="checklist-list" class="checklist"></ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+/* 価格監視ツール スタイル */
+header { background: #e85d04; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+header h1 { font-size: 20px; }
+header p  { font-size: 12px; opacity: .8; }
+.check-all-btn { padding: 8px 16px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: bold; }
+.check-all-btn:hover { background: rgba(255,255,255,0.3); }
+
+.container { max-width: 900px; margin: 24px auto; padding: 0 16px; }
+.add-box { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.add-box h2 { font-size: 15px; color: #555; margin-bottom: 14px; }
+.add-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+@media(max-width:600px){ .add-grid { grid-template-columns: 1fr; } }
+.add-grid input:focus { border-color: #e85d04; }
+.add-btn { padding: 9px 18px; background: #e85d04; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; white-space: nowrap; }
+.add-btn:hover { opacity: .88; }
+.add-btn:disabled { opacity: .5; }
+.add-result { margin-top: 8px; font-size: 13px; display: none; }
+.help-note { margin-top: 12px; font-size: 12px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px; line-height: 1.6; }
+
+.products-grid { display: grid; gap: 14px; }
+.card-name { font-weight: bold; font-size: 15px; }
+.card-url  { font-size: 11px; color: #888; word-break: break-all; margin-top: 2px; }
+.status-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+.status-down { background: #dcfce7; color: #15803d; }
+.status-up   { background: #fee2e2; color: #dc2626; }
+.status-same { background: #f1f5f9; color: #64748b; }
+.status-new  { background: #fef3c7; color: #92400e; }
+
+.price-section { display: flex; gap: 20px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+.current-price { font-size: 28px; font-weight: bold; color: #e85d04; }
+.current-price .unit { font-size: 14px; font-weight: normal; color: #888; }
+.target-price  { font-size: 13px; color: #888; }
+.last-checked  { font-size: 11px; color: #bbb; }
+.history-mini  { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.hist-chip     { font-size: 11px; background: #f9fafb; border-radius: 6px; padding: 3px 8px; color: #555; }
+
+.card-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn-check  { background: #fef3c7; color: #92400e; }
+.btn-manual { background: #e0f2fe; color: #0369a1; }
+.btn-delete { background: #fee2e2; color: #dc2626; }
+.manual-form { display: none; gap: 6px; align-items: center; flex-wrap: wrap; }
+.manual-form input  { padding: 5px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; width: 100px; }
+.manual-form button { padding: 5px 10px; background: #0369a1; color: white; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; }

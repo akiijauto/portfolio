@@ -1,0 +1,9 @@
+Flask
+Flask-WTF
+python-dotenv
+gunicorn
+qrcode[pil]
+Pillow
+reportlab
+google-genai
+anthropic

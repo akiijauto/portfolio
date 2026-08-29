@@ -1,0 +1,49 @@
+/* メルカリ出品文生成ツール スタイル */
+header { background: #ff4d4d; color: white; padding: 16px 24px; }
+header h1 { font-size: 20px; }
+header p  { font-size: 13px; opacity: .8; margin-top: 4px; }
+.container { max-width: 800px; margin: 28px auto; padding: 0 16px; }
+
+.form-box { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.form-box h2 { font-size: 15px; color: #555; margin-bottom: 18px; }
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 6px; }
+.field label .req { color: #ff4d4d; margin-left: 4px; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: #ff4d4d; }
+.field textarea { min-height: 80px; }
+.field .hint { font-size: 11px; color: #aaa; margin-top: 4px; }
+.btn { width: 100%; padding: 13px; background: #ff4d4d; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; }
+.progress { display: none; text-align: center; margin-top: 12px; font-size: 13px; color: #ff4d4d; }
+
+.results { display: none; margin-top: 4px; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.card-label   { font-size: 13px; font-weight: bold; padding: 3px 10px; border-radius: 20px; }
+.label-title  { background: #fee2e2; color: #dc2626; }
+.label-desc   { background: #fff7ed; color: #c2410c; }
+.label-price  { background: #fefce8; color: #a16207; }
+.label-tips   { background: #f0fdf4; color: #15803d; }
+
+.title-text { font-size: 18px; font-weight: bold; color: #333; }
+.title-len  { font-size: 12px; color: #888; margin-top: 4px; }
+.title-len.over { color: #dc2626; }
+.desc-text  { font-size: 14px; line-height: 1.7; white-space: pre-wrap; color: #444; }
+.price-row  { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.price-item { text-align: center; }
+.price-item .label { font-size: 12px; color: #888; }
+.price-item .value { font-size: 24px; font-weight: bold; color: #ff4d4d; }
+.price-item .unit  { font-size: 13px; color: #888; }
+.price-arrow { font-size: 20px; color: #ccc; }
+.category-tag { display: inline-block; background: #f1f5f9; border-radius: 6px; padding: 4px 12px; font-size: 13px; color: #555; margin-top: 8px; }
+.tips-list li { padding: 7px 0; border-bottom: 1px solid #f5f5f5; font-size: 14px; list-style: none; }
+.tips-list li:last-child { border-bottom: none; }
+.tips-list li::before { content: "💡 "; }
+
+.result-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.btn-secondary { background: #f1f5f9; color: #475569; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; }
+.btn-secondary:hover { background: #e2e8f0; }
+.ai-note { font-size: 11px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 8px 12px; margin-top: 12px; line-height: 1.6; }
+
+@media(max-width:480px) {
+  .price-row { gap: 8px 16px; }
+  .price-arrow { display: none; }
+}

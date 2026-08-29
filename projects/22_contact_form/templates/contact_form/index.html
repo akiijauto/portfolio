@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>お問い合わせ — AI自動化ツール ポートフォリオ</title>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-KK6XH5TW80"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-KK6XH5TW80');
+</script>
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+<link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <h1>📩 お問い合わせ</h1>
+  <p class="header-tagline">ツールの導入・カスタマイズ・新規開発についてお気軽にご相談ください</p>
+</header>
+
+<div class="container">
+  <div class="card">
+    <form id="contact-form">
+      <label for="name">お名前 <span class="required">必須</span></label>
+      <input type="text" id="name" name="name" maxlength="50" required>
+
+      <label for="company">会社名・屋号（任意）</label>
+      <input type="text" id="company" name="company" maxlength="100">
+
+      <label for="email">メールアドレス <span class="required">必須</span></label>
+      <input type="email" id="email" name="email" maxlength="100" required>
+
+      <label>ご相談のツール（複数選択可）</label>
+      <div class="tool-checklist">
+        {% for t in tools %}
+        <label class="tool-check">
+          <input type="checkbox" name="tools" value="{{ t }}" {% if t == selected_tool %}checked{% endif %}>
+          <span>{{ t }}</span>
+        </label>
+        {% endfor %}
+      </div>
+
+      <label for="message">ご相談内容 <span class="required">必須</span></label>
+      <textarea id="message" name="message" maxlength="1000" rows="6" required></textarea>
+      <div class="char-count"><span id="char-count">0</span> / 1000</div>
+
+      <button type="submit" id="submit-btn" class="btn-primary">送信する</button>
+    </form>
+
+    <div id="result-ok" class="result-ok" style="display:none;">
+      ✅ お問い合わせを受け付けました。担当者よりご連絡いたします。
+    </div>
+    <div id="result-err" class="result-err" style="display:none;"></div>
+  </div>
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>CSVデータ 対話型分析ツール</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>CSVデータ 対話型分析ツール</h1>
+    <p>CSVをアップロードし、自然言語で質問するとAIがグラフ＋テキストで回答します。</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flash">
+          {% for category, message in messages %}
+            <li class="flash-{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('upload') }}" enctype="multipart/form-data" class="upload-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="file" name="csv_file" accept=".csv" required>
+      <button type="submit">アップロード</button>
+    </form>
+
+    {% if preview_html %}
+      <h2>データプレビュー（先頭5行）</h2>
+      <div class="table-scroll">{{ preview_html | safe }}</div>
+
+      <h2>統計サマリー</h2>
+      <div class="table-scroll">{{ summary_html | safe }}</div>
+
+      <h2>自然言語で質問する</h2>
+      <form method="post" action="{{ url_for('ask') }}" onsubmit="return startLoading(this, 'ask-loading')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="text" name="question" placeholder="例: 月別の売上合計は？" value="{{ question or '' }}" required>
+        <button type="submit" id="ask-submit-btn">質問する</button>
+        <p id="ask-loading" class="loading" hidden>⏳ 分析中です。しばらくお待ちください…</p>
+      </form>
+
+      <form method="post" action="{{ url_for('insight') }}" class="insight-form" onsubmit="return startLoading(this, 'insight-loading')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" id="insight-submit-btn">このデータで他に気になる点は？</button>
+        <p id="insight-loading" class="loading" hidden>⏳ 分析中です。しばらくお待ちください…</p>
+      </form>
+
+      {% if error_message %}
+        <p class="flash-error">{{ error_message }}</p>
+      {% endif %}
+
+      {% if answer_summary %}
+        <h2>回答</h2>
+        <p>{{ answer_summary }}</p>
+      {% endif %}
+
+      {% if chart_data_url %}
+        <img src="{{ chart_data_url }}" alt="分析結果グラフ" class="chart-image">
+      {% endif %}
+
+      {% if insight_text %}
+        <h2>AIからの追加インサイト</h2>
+        <pre class="insight-text">{{ insight_text }}</pre>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <script>
+    function startLoading(form, loadingId) {
+      form.querySelector("button[type=submit]").disabled = true;
+      document.getElementById(loadingId).hidden = false;
+      return true;
+    }
+  </script>
+</body>
+</html>

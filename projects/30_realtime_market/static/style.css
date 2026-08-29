@@ -1,0 +1,111 @@
+body {
+  font-family: "Hiragino Sans", "Meiryo", sans-serif;
+  background: #f5f5f7;
+  margin: 0;
+  padding: 40px 16px;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  background: white;
+  padding: 32px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+h1 {
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+
+h2 {
+  font-size: 16px;
+  margin-top: 28px;
+}
+
+.daily-comment {
+  margin-top: 16px;
+  padding: 12px;
+  background: #eef4ff;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.price-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.price-card {
+  display: flex;
+  justify-content: space-between;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fafafa;
+}
+
+.price-label {
+  font-weight: bold;
+  font-size: 13px;
+  color: #555;
+}
+
+.price-value {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+canvas {
+  margin-top: 24px;
+}
+
+form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+label {
+  font-size: 13px;
+}
+
+input[type="number"] {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  width: 140px;
+}
+
+button {
+  padding: 10px 16px;
+  background: #2d6cdf;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.hint {
+  font-size: 12px;
+  color: #888;
+}
+
+.flash {
+  list-style: none;
+  padding: 0;
+}
+
+.flash-error {
+  color: #c0392b;
+}
+
+.flash-success {
+  color: #27ae60;
+}

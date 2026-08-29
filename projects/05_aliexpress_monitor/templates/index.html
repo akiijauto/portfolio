@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>価格監視ツール</title>
+  <link rel="stylesheet" href="/static/base.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>💰 価格監視ツール</h1>
+    <p>最終更新: {{ now }} ／ 毎日9:00に自動チェック</p>
+  </div>
+  <button class="check-all-btn" onclick="checkAll()">🔄 全商品を今すぐチェック</button>
+</header>
+
+<div class="container">
+  <div class="add-box">
+    <h2>商品を追加する</h2>
+    <div class="add-grid">
+      <input type="text"   id="add-name"   placeholder="商品名（例: ワイヤレスイヤホン）">
+      <input type="url"    id="add-url"    placeholder="商品URL">
+      <input type="number" id="add-target" placeholder="目標価格（円・省略可）" min="0">
+    </div>
+    <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button class="add-btn" id="add-btn" onclick="addProduct()">＋ 追加する</button>
+      <span style="font-size:12px;color:#888;">追加後に「今すぐチェック」で価格を取得してください</span>
+    </div>
+    <div class="add-result" id="add-result"></div>
+    <div class="help-note">
+      使い方: ① 商品名・商品URL（AliExpressなどの商品ページのURL）を入力して追加 → ② カードの「今すぐチェック」で現在価格を取得 → ③ 目標価格を設定しておくと、価格が目標以下になった際にカードのステータスが「✅ 目標達成」に変わります。
+    </div>
+  </div>
+
+  <div class="products-grid">
+    {% if products %}
+      {% for p in products %}
+      <div class="card" id="card-{{ p.id }}">
+        <div class="card-header">
+          <div>
+            <div class="card-name">{{ p.name }}</div>
+            <div class="card-url"><a href="{{ p.url }}" target="_blank">{{ p.url[:60] }}{% if p.url|length > 60 %}...{% endif %}</a></div>
+          </div>
+          <span class="status-badge {% if '値下がり' in p.status %}status-down{% elif '値上がり' in p.status %}status-up{% elif p.status == '変化なし' %}status-same{% else %}status-new{% endif %}">{{ p.status }}</span>
+        </div>
+        <div class="price-section">
+          <div>
+            {% if p.current_price %}<span class="current-price">{{ "{:,.0f}".format(p.current_price) }}<span class="unit"> 円</span></span>
+            {% else %}<span style="color:#bbb;font-size:14px;">価格未取得</span>{% endif %}
+          </div>
+          {% if p.target_price %}
+          <div class="target-price">目標: {{ "{:,.0f}".format(p.target_price) }}円
+            {% if p.current_price and p.current_price <= p.target_price %}<span style="color:#15803d;font-weight:bold;">✅ 目標達成！</span>{% endif %}
+          </div>
+          {% endif %}
+          <div class="last-checked">最終チェック: {{ p.last_checked[:16] if p.last_checked else '未チェック' }}</div>
+        </div>
+        {% if p.history %}
+        <div class="history-mini">
+          {% for h in p.history[-5:] | reverse %}
+          <span class="hist-chip">{{ h.date[5:] }} {{ "{:,.0f}".format(h.price) }}円</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <div class="card-actions">
+          <button class="btn-sm btn-check"  onclick="checkNow('{{ p.id }}', this)">今すぐチェック</button>
+          <button class="btn-sm btn-manual" onclick="toggleManual('{{ p.id }}')">手動入力</button>
+          <div class="manual-form" id="manual-{{ p.id }}">
+            <input type="number" id="manual-val-{{ p.id }}" placeholder="価格（円）" min="0">
+            <button onclick="saveManual('{{ p.id }}')">保存</button>
+          </div>
+          <button class="btn-sm btn-delete" onclick="deleteProduct('{{ p.id }}')">削除</button>
+        </div>
+        <div class="flash" id="flash-{{ p.id }}"></div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">商品がまだ登録されていません。上のフォームから追加してください。</div>
+    {% endif %}
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

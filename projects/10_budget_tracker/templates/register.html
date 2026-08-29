@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>新規登録 — 家計簿</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body class="auth-page">
+<div class="auth-card">
+  <h1>家計簿ダッシュボード</h1>
+  <h2>新規登録</h2>
+  {% for msg in get_flashed_messages() %}
+  <div class="flash">{{ msg }}</div>
+  {% endfor %}
+  <form method="post" action="{{ url_for('.register') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>メールアドレス<input type="email" name="email" required autofocus></label>
+    <label>パスワード<input type="password" name="password" required minlength="6"></label>
+    <button type="submit" class="btn-primary">登録して始める</button>
+  </form>
+  <p class="auth-link"><a href="{{ url_for('.login') }}">ログインはこちら</a></p>
+</div>
+</body>
+</html>

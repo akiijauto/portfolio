@@ -1,0 +1,52 @@
+/* YouTube要約ツール スタイル */
+header { background: #dc2626; color: white; padding: 16px 24px; }
+header h1 { font-size: 20px; }
+header p  { font-size: 13px; opacity: .8; margin-top: 4px; }
+.container { max-width: 800px; margin: 28px auto; padding: 0 16px; }
+
+.input-box { background: white; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.input-box h2 { font-size: 15px; margin-bottom: 14px; color: #555; }
+.url-row { display: flex; gap: 10px; }
+.url-row input { flex: 1; padding: 11px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; width: auto; }
+.url-row input:focus { border-color: #dc2626; }
+.btn { padding: 11px 22px; background: #dc2626; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; white-space: nowrap; }
+.progress { display: none; margin-top: 12px; font-size: 13px; color: #dc2626; }
+
+.search-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; }
+.search-result-card { cursor: pointer; border: 1px solid #eee; border-radius: 8px; overflow: hidden; transition: box-shadow .15s, border-color .15s; }
+.search-result-card:hover { border-color: #dc2626; box-shadow: 0 2px 8px rgba(220,38,38,.15); }
+.search-result-card img { width: 100%; display: block; }
+.search-result-title { font-size: 12px; padding: 8px; line-height: 1.4; color: #333; }
+.empty-note { font-size: 13px; color: #888; margin-top: 12px; }
+
+.results { display: none; }
+.video-info { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 20px; background: white; border-radius: 12px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.thumbnail { width: 160px; border-radius: 8px; flex-shrink: 0; }
+.video-meta h3 { font-size: 15px; margin-bottom: 6px; }
+.video-meta p  { font-size: 12px; color: #888; }
+.category-tag  { display: inline-block; background: #fee2e2; color: #dc2626; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-top: 6px; }
+
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.card-label  { font-size: 13px; font-weight: bold; padding: 3px 10px; border-radius: 20px; }
+.label-summary { background: #fee2e2; color: #dc2626; }
+.label-points  { background: #fef3c7; color: #92400e; }
+.label-sns     { background: #fce7f3; color: #be185d; }
+
+.summary-text { font-size: 14px; line-height: 1.7; color: #444; }
+.points-list li { padding: 7px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; line-height: 1.6; list-style: none; }
+.points-list li:last-child { border-bottom: none; }
+.points-list li::before { content: "▸ "; color: #dc2626; }
+.sns-text { font-size: 14px; line-height: 1.7; white-space: pre-wrap; color: #444; }
+
+.result-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.btn-secondary { background: #f1f5f9; color: #475569; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; }
+.btn-secondary:hover { background: #e2e8f0; }
+
+@media(max-width:480px) {
+  .url-row { flex-direction: column; }
+  .url-row input, .url-row .btn { width: 100%; }
+}
+@media(max-width:560px) {
+  .video-info { flex-direction: column; }
+  .thumbnail { width: 100%; }
+}

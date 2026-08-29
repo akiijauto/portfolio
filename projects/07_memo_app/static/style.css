@@ -1,0 +1,46 @@
+/* メモアプリ スタイル */
+header { background: #4338ca; color: white; padding: 16px 24px; }
+header h1 { font-size: 20px; }
+header p  { font-size: 13px; opacity: .8; margin-top: 4px; }
+
+.container { max-width: 720px; margin: 28px auto; padding: 0 16px; }
+.container.narrow { max-width: 420px; }
+
+.box { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.box h2 { font-size: 16px; margin-bottom: 16px; color: #333; }
+
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; }
+.field input:focus, .field textarea:focus { border-color: #4338ca; }
+
+.btn-primary { background: #4338ca; color: white; }
+.btn-secondary { background: #e0e7ff; color: #4338ca; }
+.btn-danger { background: #fee2e2; color: #dc2626; }
+.btn-block { width: 100%; }
+
+.flash-list { margin-bottom: 16px; }
+.flash-msg { border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 8px; }
+.flash-success { background: #dcfce7; color: #15803d; }
+.flash-error   { background: #fee2e2; color: #dc2626; }
+
+.auth-links { margin-top: 14px; font-size: 13px; text-align: center; color: #666; }
+.auth-links a { color: #4338ca; text-decoration: none; }
+.auth-links a:hover { text-decoration: underline; }
+
+.topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.topbar .user-email { font-size: 13px; color: #666; }
+
+.memo-card { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.memo-card h3 { font-size: 15px; margin-bottom: 6px; }
+.memo-card .body-preview { font-size: 13px; color: #666; white-space: pre-wrap; line-height: 1.5; max-height: 4.5em; overflow: hidden; }
+.memo-card .meta { font-size: 11px; color: #aaa; margin-top: 8px; }
+.memo-card .actions { display: flex; gap: 8px; flex-shrink: 0; }
+.memo-card .actions form { display: inline; }
+
+.empty { text-align: center; padding: 48px; color: #bbb; }
+
+@media(max-width:480px) {
+  .topbar { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .memo-card { flex-direction: column; }
+  .memo-card .actions { width: 100%; }
+}

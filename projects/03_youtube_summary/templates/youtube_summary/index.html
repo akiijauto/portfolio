@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>YouTube要約ツール</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <h1>YouTube要約ツール</h1>
+  <p>YouTube URLを入力するだけで動画の要約・ポイント・SNS投稿文を自動生成します</p>
+</header>
+
+<div class="container">
+  <div class="input-box">
+    <h2>キーワードで字幕付き動画を検索</h2>
+    <div class="url-row">
+      <input type="text" id="search-input" placeholder="例: Python 入門 / ChatGPT 活用法" autofocus>
+      <button class="btn" id="search-btn" onclick="doSearch()">検索する</button>
+    </div>
+    <div class="progress" id="search-progress">字幕付きの動画を検索中です… しばらくお待ちください</div>
+    <div class="error-box" id="search-error-box"></div>
+    <div class="search-results" id="search-results"></div>
+  </div>
+
+  <div class="input-box">
+    <h2>YouTube URLを入力</h2>
+    <div class="url-row">
+      <input type="text" id="url-input" placeholder="https://www.youtube.com/watch?v=...">
+      <button class="btn" id="summarize-btn" onclick="doSummarize()">要約する</button>
+    </div>
+    <div class="progress" id="progress">字幕を取得してAIが要約中です… しばらくお待ちください</div>
+    <div class="error-box" id="error-box"></div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="video-info">
+      <img class="thumbnail" id="thumbnail" src="" alt="サムネイル">
+      <div class="video-meta">
+        <h3 id="video-title"></h3>
+        <p id="transcript-len"></p>
+        <span class="category-tag" id="category"></span>
+      </div>
+    </div>
+    <div class="result-actions">
+      <button class="btn-secondary" onclick="downloadSummary()">💾 要約をダウンロード</button>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-label label-summary">動画要約</span><button class="copy-btn" onclick="copyText('summary-text')">コピー</button></div>
+      <div class="summary-text" id="summary-text"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-label label-points">主要ポイント5選</span><button class="copy-btn" onclick="copyText('points-list')">コピー</button></div>
+      <ul class="points-list" id="points-list"></ul>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-label label-sns">SNS投稿用</span><button class="copy-btn" onclick="copyText('sns-text')">コピー</button></div>
+      <div class="sns-text" id="sns-text"></div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

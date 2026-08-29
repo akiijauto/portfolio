@@ -1,0 +1,9 @@
+Flask
+Flask-WTF
+Flask-SocketIO
+eventlet
+python-dotenv
+gunicorn
+yfinance
+google-genai
+anthropic

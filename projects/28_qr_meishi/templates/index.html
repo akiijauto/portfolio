@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>QRコード名刺メーカー</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>QRコード名刺メーカー</h1>
+    <p>入力内容からQRコード付きのデジタル名刺PDFを生成します。</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flash">
+          {% for category, message in messages %}
+            <li class="flash-{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('generate') }}" onsubmit="return startGenerateSubmit(this)">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <label for="name">名前 *</label>
+      <input type="text" id="name" name="name" required>
+
+      <label for="title">肩書き</label>
+      <input type="text" id="title" name="title">
+
+      <label for="company">会社名</label>
+      <input type="text" id="company" name="company">
+
+      <label for="email">メール</label>
+      <input type="email" id="email" name="email">
+
+      <label for="phone">電話</label>
+      <input type="tel" id="phone" name="phone">
+
+      <label for="url">URL</label>
+      <input type="url" id="url" name="url">
+
+      <label class="checkbox">
+        <input type="checkbox" name="want_catchphrase">
+        AIにキャッチコピーを1行生成してもらう（任意）
+      </label>
+
+      <button type="submit" id="generate-submit-btn">名刺PDFを生成</button>
+      <p id="generate-loading" class="loading" hidden>⏳ 生成中です。しばらくお待ちください…</p>
+    </form>
+  </div>
+
+  <script>
+    function startGenerateSubmit(form) {
+      document.getElementById("generate-submit-btn").disabled = true;
+      document.getElementById("generate-loading").hidden = false;
+      return true;
+    }
+  </script>
+</body>
+</html>

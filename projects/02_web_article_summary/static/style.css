@@ -1,0 +1,43 @@
+/* Web記事要約ツール スタイル */
+header { background: #0f766e; color: white; padding: 16px 24px; }
+header h1 { font-size: 20px; }
+header p  { font-size: 13px; opacity: .8; margin-top: 4px; }
+.container { max-width: 800px; margin: 28px auto; padding: 0 16px; }
+
+.input-box { background: white; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.input-box h2 { font-size: 15px; margin-bottom: 14px; color: #555; }
+.url-row { display: flex; gap: 10px; }
+.url-row input { flex: 1; padding: 11px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; width: auto; }
+.url-row input:focus { border-color: #0f766e; }
+.btn { padding: 11px 22px; background: #0f766e; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; white-space: nowrap; }
+.progress { display: none; margin-top: 12px; font-size: 13px; color: #0f766e; }
+
+.results { display: none; }
+.article-title { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+.article-url   { font-size: 12px; color: #888; margin-bottom: 20px; word-break: break-all; }
+
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.card-label  { font-size: 13px; font-weight: bold; padding: 3px 10px; border-radius: 20px; }
+.label-3   { background: #ccfbf1; color: #0f766e; }
+.label-5   { background: #dbeafe; color: #1d4ed8; }
+.label-sns { background: #fce7f3; color: #be185d; }
+
+.summary-list li { padding: 7px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; line-height: 1.6; list-style: none; }
+.summary-list li:last-child { border-bottom: none; }
+.summary-list li::before { content: "▸ "; color: #0f766e; }
+.sns-text { font-size: 14px; line-height: 1.7; white-space: pre-wrap; color: #444; }
+
+.result-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.btn-secondary { background: #f1f5f9; color: #475569; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; }
+.btn-secondary:hover { background: #e2e8f0; }
+
+.search-results { list-style: none; margin-top: 14px; padding: 0; }
+.search-result-item { padding: 12px; border: 1px solid #f1f5f9; border-radius: 8px; margin-bottom: 8px; }
+.search-result-title { font-size: 14px; font-weight: bold; margin-bottom: 4px; }
+.search-result-url { font-size: 12px; color: #888; margin-bottom: 6px; word-break: break-all; }
+.search-result-snippet { font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 10px; }
+
+@media(max-width:480px) {
+  .url-row { flex-direction: column; }
+  .url-row input, .url-row .btn { width: 100%; }
+}

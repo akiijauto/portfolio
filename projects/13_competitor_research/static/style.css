@@ -1,0 +1,77 @@
+/* 競合調査ツール スタイル */
+header { background: linear-gradient(135deg, #064e3b, #065f46, #059669); color: white; padding: 20px 24px 16px; }
+header h1 { font-size: 22px; }
+header p  { font-size: 13px; opacity: .8; margin-top: 4px; }
+
+/* ── ヒーロー統計 ── */
+.hero-stats { display: flex; align-items: center; justify-content: center; gap: 0; background: #022c22; padding: 20px 24px; flex-wrap: wrap; }
+.hero-stat { text-align: center; padding: 0 24px; }
+.hero-stat-accent .hero-num { color: #6ee7b7; }
+.hero-num  { font-size: 40px; font-weight: 800; color: white; line-height: 1; }
+.hero-unit { font-size: 18px; font-weight: 600; margin-left: 2px; }
+.hero-label { font-size: 11px; color: rgba(255,255,255,.6); margin-top: 4px; }
+.hero-divider { width: 1px; height: 48px; background: rgba(255,255,255,.15); margin: 0 16px; }
+@media(max-width:600px){ .hero-divider { display:none; } .hero-stats { gap: 16px; } }
+
+/* ── タブ ── */
+.tab-nav { display: flex; background: #047857; padding: 0 24px; overflow-x: auto; }
+.tab { padding: 10px 20px; color: rgba(255,255,255,.65); font-size: 14px; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; }
+.tab:hover { color: white; }
+.tab.active { color: white; border-bottom-color: white; font-weight: bold; }
+
+.container { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.box { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.box h2 { font-size: 15px; color: #1e293b; margin-bottom: 12px; font-weight: 700; }
+.hint { font-size: 12px; color: #94a3b8; margin-bottom: 12px; }
+
+/* ── 検索行 ── */
+.search-row { display: flex; gap: 10px; }
+.search-row input { flex: 1; }
+.search-row .btn { white-space: nowrap; flex-shrink: 0; }
+
+/* ── URL リスト ── */
+.url-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; background: #f8fafc; }
+.url-item:hover { background: #f0fdf4; border-color: #6ee7b7; }
+.url-item input[type=checkbox] { width: 16px; height: 16px; flex-shrink: 0; accent-color: #059669; }
+.url-text { flex: 1; font-size: 12px; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.url-rank { font-size: 11px; font-weight: bold; color: #059669; background: #dcfce7; padding: 2px 7px; border-radius: 10px; flex-shrink: 0; }
+
+/* ── 分析ボタン・プログレス ── */
+.analyze-actions { margin-top: 14px; }
+.progress-wrap { margin-top: 12px; }
+.progress-bar  { background: #f1f5f9; border-radius: 8px; height: 8px; overflow: hidden; }
+.progress-fill { background: linear-gradient(90deg, #059669, #34d399); height: 100%; transition: width .4s; width: 0%; }
+.progress-text { font-size: 12px; color: #059669; margin-top: 6px; }
+
+/* ── 結果ヘッダー ── */
+.result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+
+/* ── 競合ページカード ── */
+.pages-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.page-card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; background: #f8fafc; position: relative; }
+.page-card.page-failed { opacity: .5; border-style: dashed; }
+.page-rank { position: absolute; top: 10px; right: 10px; font-size: 11px; font-weight: bold; color: #059669; background: #dcfce7; padding: 1px 7px; border-radius: 10px; }
+.page-domain { font-size: 12px; font-weight: bold; color: #0f172a; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.page-title { font-size: 11px; color: #475569; margin-bottom: 8px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.page-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.meta-tag { font-size: 10px; background: #f0fdf4; color: #065f46; border: 1px solid #a7f3d0; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+.meta-tag.meta-warn { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
+.page-h2s { margin-top: 8px; }
+.page-h2s summary { font-size: 11px; color: #94a3b8; cursor: pointer; }
+.page-h2s ul { margin-top: 6px; padding-left: 14px; }
+.page-h2s li { font-size: 10px; color: #64748b; line-height: 1.5; }
+
+/* ── AI レポート ── */
+.ai-report { font-size: 14px; color: #1e293b; line-height: 1.8; white-space: pre-wrap; }
+.ai-report h2 { font-size: 15px; font-weight: 700; color: #065f46; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 2px solid #a7f3d0; }
+.ai-report strong { color: #059669; }
+.ai-report ul, .ai-report ol { padding-left: 20px; margin: 6px 0; }
+.ai-report li { margin-bottom: 4px; }
+
+.btn-primary   { background: #059669; color: white; }
+.btn-primary:hover { background: #047857; }
+.btn-secondary { background: #f1f5f9; color: #475569; }
+.result-actions { display: flex; gap: 8px; flex-wrap: wrap; }

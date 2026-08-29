@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>競合調査ツール</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+  <h1>競合調査ツール</h1>
+  <p>キーワードで上位競合を自動スクレイプ → AIがコンテンツギャップを分析</p>
+</header>
+
+<div class="hero-stats">
+  <div class="hero-stat">
+    <div class="hero-num">5<span class="hero-unit">件</span></div>
+    <div class="hero-label">競合ページを自動取得</div>
+  </div>
+  <div class="hero-divider"></div>
+  <div class="hero-stat hero-stat-accent">
+    <div class="hero-num">30<span class="hero-unit">秒</span></div>
+    <div class="hero-label">分析完了まで</div>
+  </div>
+  <div class="hero-divider"></div>
+  <div class="hero-stat">
+    <div class="hero-num">4<span class="hero-unit">項目</span></div>
+    <div class="hero-label">パターン・ギャップ・差別化・タイトル</div>
+  </div>
+</div>
+
+<nav class="tab-nav">
+  <div class="tab active" onclick="switchTab('search')">① キーワード検索</div>
+  <div class="tab"        onclick="switchTab('results')">② 分析結果</div>
+</nav>
+
+<div class="container">
+
+  <!-- ① キーワード検索 -->
+  <div class="tab-content active" id="tab-search">
+    <div class="box">
+      <h2>検索キーワードを入力</h2>
+      <p class="hint">例: 「Flask 入門」「業務自動化 Python」「メルカリ 出品 コツ」</p>
+      <div class="search-row">
+        <input type="text" id="keyword" placeholder="例: Flask 入門" maxlength="200">
+        <button class="btn btn-primary" id="search-btn" onclick="doSearch()">🔍 競合を検索</button>
+      </div>
+      <div class="error-box" id="search-error"></div>
+    </div>
+
+    <div class="box" id="url-box" style="display:none;">
+      <h2>検索結果 — 分析するURLを選択</h2>
+      <p class="hint">チェックを外すと分析から除外されます（最大5件）</p>
+      <div id="url-list"></div>
+      <div class="analyze-actions">
+        <button class="btn btn-primary" id="analyze-btn" onclick="doAnalyze()">🤖 AIで競合分析する</button>
+        <div class="progress-wrap" id="progress-wrap" style="display:none;">
+          <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+          <div class="progress-text" id="progress-text">スクレイプ中…</div>
+        </div>
+      </div>
+      <div class="error-box" id="analyze-error"></div>
+    </div>
+  </div>
+
+  <!-- ② 分析結果 -->
+  <div class="tab-content" id="tab-results">
+    <div class="box" id="results-empty">
+      <div class="empty">① タブでキーワードを入力して分析を実行してください</div>
+    </div>
+
+    <div id="results-wrap" style="display:none;">
+      <div class="box">
+        <div class="result-header">
+          <h2 id="result-keyword-label"></h2>
+          <div class="result-actions">
+            <button class="btn btn-secondary" onclick="copyAnalysis()">📋 レポートをコピー</button>
+            <button class="btn btn-secondary" onclick="downloadReport()">💾 ダウンロード</button>
+          </div>
+        </div>
+        <!-- 競合ページ一覧 -->
+        <div class="pages-grid" id="pages-grid"></div>
+      </div>
+
+      <div class="box">
+        <h2>AI分析レポート</h2>
+        <div class="ai-report" id="ai-report"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('.static', filename='app.js') }}"></script>
+</body>
+</html>

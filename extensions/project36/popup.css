@@ -1,0 +1,49 @@
+body {
+  width: 320px;
+  font-family: "Hiragino Sans", "Meiryo", sans-serif;
+  padding: 12px;
+}
+
+h1 {
+  font-size: 15px;
+  margin: 0 0 8px;
+}
+
+textarea, select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px;
+  margin-bottom: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-family: inherit;
+}
+
+button {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 8px;
+  background: #2d6cdf;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 4px;
+  color: #444;
+}
+
+.error {
+  color: #c0392b;
+  font-size: 12px;
+  min-height: 1.2em;
+}
+
+.hidden {
+  display: none;
+}

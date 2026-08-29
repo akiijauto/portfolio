@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Googleカレンダー連携 予定要約Bot</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>Googleカレンダー連携 予定要約Bot</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flash">
+          {% for category, message in messages %}
+            <li class="flash-{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    {% if not authenticated %}
+      <p>Googleカレンダーと連携すると、今週の予定をAIが要約して表示します。</p>
+      <a class="button" href="{{ url_for('auth_login') }}">Googleでログイン</a>
+    {% else %}
+      <div class="summary-block">
+        <h2>今週の予定まとめ（AI要約）</h2>
+        <p>{{ summary }}</p>
+      </div>
+
+      <h2>今週の予定一覧</h2>
+      <ul class="event-list">
+        {% for event in events %}
+          <li><span class="event-time">{{ event.start }}</span> {{ event.summary }}</li>
+        {% else %}
+          <li>今週は登録されている予定がありません。</li>
+        {% endfor %}
+      </ul>
+
+      <form method="post" action="{{ url_for('run_now') }}" onsubmit="return startRunNowLoading(this)">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" id="run-now-btn">今すぐ要約を送信する</button>
+        <p id="run-now-loading" class="loading" hidden>⏳ 送信中です。しばらくお待ちください…</p>
+      </form>
+    {% endif %}
+  </div>
+
+  <script>
+    function startRunNowLoading(form) {
+      document.getElementById("run-now-btn").disabled = true;
+      document.getElementById("run-now-loading").hidden = false;
+      return true;
+    }
+  </script>
+</body>
+</html>

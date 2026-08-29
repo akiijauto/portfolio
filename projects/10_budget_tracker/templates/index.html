@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>ダッシュボード — 家計簿</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<header>
+  <span class="logo">家計簿ダッシュボード</span>
+  <nav>
+    <a href="{{ url_for('.transaction_new') }}" class="btn-nav">＋ 支出を追加</a>
+    <a href="{{ url_for('.categories') }}" class="btn-nav-sub">カテゴリ</a>
+    <form method="post" action="{{ url_for('.logout') }}" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn-logout">ログアウト</button>
+    </form>
+  </nav>
+</header>
+
+<div class="container">
+
+  <!-- 当月合計 -->
+  <div class="summary-bar">
+    <div class="summary-item">
+      <div class="summary-label">{{ today.strftime('%Y年%m月') }}の支出合計</div>
+      <div class="summary-value">¥{{ "{:,}".format(monthly_total) }}</div>
+    </div>
+  </div>
+
+  <!-- グラフ -->
+  <div class="charts-grid">
+    <div class="box">
+      <h2>カテゴリ別（当月）</h2>
+      <div class="chart-wrap">
+        <div class="chart-loading" id="donut-loading"><div class="spinner"></div>読み込み中…</div>
+        <canvas id="donutChart" style="display:none;"></canvas>
+      </div>
+    </div>
+    <div class="box">
+      <h2>月別支出（直近6ヶ月）</h2>
+      <div class="chart-wrap">
+        <div class="chart-loading" id="bar-loading"><div class="spinner"></div>読み込み中…</div>
+        <canvas id="barChart" style="display:none;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 最新取引 -->
+  <div class="box">
+    <div class="box-header">
+      <h2>最新の支出（20件）</h2>
+      <a href="{{ url_for('.transaction_new') }}" class="btn-sm">＋ 追加</a>
+    </div>
+    {% if recent %}
+    <table class="tx-table">
+      <tr><th>日付</th><th>カテゴリ</th><th>メモ</th><th>金額</th><th></th></tr>
+      {% for tx in recent %}
+      <tr>
+        <td>{{ tx.date.strftime('%m/%d') }}</td>
+        <td><span class="badge" style="background:{{ tx.category.color }}20;color:{{ tx.category.color }}">{{ tx.category.name }}</span></td>
+        <td class="memo">{{ tx.memo or '—' }}</td>
+        <td class="amount">¥{{ "{:,}".format(tx.amount) }}</td>
+        <td>
+          <form method="post" action="{{ url_for('.transaction_delete', tx_id=tx.id) }}" onsubmit="return confirm('削除しますか？')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn-del">削除</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <div class="empty">まだ支出がありません。「＋ 支出を追加」から登録してください。</div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+async function loadCharts() {
+  const [donut, bar] = await Promise.all([
+    fetch('{{ url_for(".api_donut") }}').then(r => r.json()),
+    fetch('{{ url_for(".api_bar") }}').then(r => r.json()),
+  ]);
+
+  document.getElementById('donut-loading').style.display = 'none';
+  document.getElementById('bar-loading').style.display = 'none';
+  document.getElementById('donutChart').style.display = 'block';
+  document.getElementById('barChart').style.display = 'block';
+
+  new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: { labels: donut.labels, datasets: [{ data: donut.data, backgroundColor: donut.colors, borderWidth: 2 }] },
+    options: { plugins: { legend: { position: 'bottom' } }, cutout: '60%' },
+  });
+
+  new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: bar.labels,
+      datasets: [{ label: '支出（円）', data: bar.data, backgroundColor: '#6366f1aa', borderColor: '#6366f1', borderWidth: 1 }]
+    },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+  });
+}
+loadCharts();
+</script>
+</body>
+</html>

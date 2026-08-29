@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Webhook中継サーバー</title>
+  <link rel="stylesheet" href="{{ url_for('.static', filename='base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('.static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <h1>GitHub → Discord Webhook 中継</h1>
+  <p>署名検証済みのGitHubイベントをDiscordへEmbed通知</p>
+</header>
+
+<div class="container">
+
+  <!-- Webhook URL -->
+  <div class="box">
+    <h2>Webhook エンドポイント</h2>
+    <div class="url-row">
+      <code id="webhook-url">{{ webhook_url }}</code>
+      <button class="btn-copy" onclick="copyUrl()">コピー</button>
+    </div>
+    <details class="setup-guide">
+      <summary>GitHub への設定手順</summary>
+      <ol>
+        <li>GitHubリポジトリ → <strong>Settings → Webhooks → Add webhook</strong></li>
+        <li><strong>Payload URL</strong> に上記URLを入力</li>
+        <li><strong>Content type</strong> を <code>application/json</code> に変更</li>
+        <li><strong>Secret</strong> に <code>GITHUB_WEBHOOK_SECRET</code> 環境変数と同じ値を入力</li>
+        <li><strong>Events</strong> で通知したいイベントを選択（push / pull_request / issues）</li>
+        <li><strong>Add webhook</strong> → ping イベントが届いてログに表示されれば成功</li>
+      </ol>
+      <p>対応イベント: <code>push</code> / <code>pull_request</code> / <code>issues</code> / <code>ping</code></p>
+    </details>
+  </div>
+
+  <!-- ログ -->
+  <div class="box">
+    <div class="box-header">
+      <h2>受信ログ（直近50件）</h2>
+      <button class="btn-refresh" onclick="refreshLogs()">更新</button>
+    </div>
+    <div id="log-wrap">
+      {% if logs %}
+      <table class="log-table">
+        <tr><th>日時</th><th>イベント</th><th>結果</th><th>概要</th></tr>
+        {% for log in logs %}
+        <tr>
+          <td class="col-at">{{ log.at }}</td>
+          <td><code class="event-tag">{{ log.event }}</code></td>
+          <td>
+            {% if log.status == 'ok' %}<span class="badge-ok">成功</span>
+            {% elif log.status == 'ignored' %}<span class="badge-skip">無視</span>
+            {% else %}<span class="badge-err">エラー</span>{% endif %}
+          </td>
+          <td class="col-summary">{{ log.summary }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+      <div class="empty">まだWebhookを受信していません</div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<script>
+function copyUrl() {
+  navigator.clipboard.writeText(document.getElementById('webhook-url').textContent);
+  const btn = document.querySelector('.btn-copy');
+  btn.textContent = 'コピー済み!';
+  setTimeout(() => btn.textContent = 'コピー', 1500);
+}
+
+async function refreshLogs() {
+  const data = await fetch('api/logs').then(r => r.json());
+  const wrap = document.getElementById('log-wrap');
+  if (!data.length) {
+    wrap.innerHTML = '<div class="empty">まだWebhookを受信していません</div>';
+    return;
+  }
+  const statusBadge = s => s === 'ok'
+    ? '<span class="badge-ok">成功</span>'
+    : s === 'ignored'
+      ? '<span class="badge-skip">無視</span>'
+      : '<span class="badge-err">エラー</span>';
+  const rows = data.map(l =>
+    `<tr>
+      <td class="col-at">${l.at}</td>
+      <td><code class="event-tag">${l.event}</code></td>
+      <td>${statusBadge(l.status)}</td>
+      <td class="col-summary">${l.summary}</td>
+    </tr>`
+  ).join('');
+  wrap.innerHTML = `<table class="log-table">
+    <tr><th>日時</th><th>イベント</th><th>結果</th><th>概要</th></tr>
+    ${rows}
+  </table>`;
+}
+
+// 30秒ごとに自動更新
+setInterval(refreshLogs, 30000);
+</script>
+</body>
+</html>

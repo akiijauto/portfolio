@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>画像→テキスト OCR変換ツール</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>画像→テキスト OCR変換ツール</h1>
+    <p>写真・スキャン画像・PDFをアップロードすると文字起こしを行い、AIで整形・校正します。</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flash">
+          {% for category, message in messages %}
+            <li class="flash-{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('ocr') }}" enctype="multipart/form-data" onsubmit="return startOcrSubmit(this)">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="file" name="image_file" accept=".jpg,.jpeg,.png,.pdf" required>
+
+      <label class="checkbox">
+        <input type="checkbox" name="proofread" checked>
+        AIで誤字補正・文章整形する
+      </label>
+
+      <button type="submit" id="ocr-submit-btn">文字起こしを実行</button>
+      <p id="ocr-loading" class="loading" hidden>⏳ 文字起こし中です。しばらくお待ちください…</p>
+    </form>
+
+    {% if result_text is not none %}
+      <h2>整形済みテキスト{% if page_count and page_count > 1 %}（全{{ page_count }}ページ）{% endif %}</h2>
+      <textarea id="result-text" readonly rows="14">{{ result_text }}</textarea>
+
+      <div class="actions">
+        <button type="button" onclick="copyResult()">コピー</button>
+        <form method="post" action="{{ url_for('download') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="text" value="{{ result_text }}">
+          <button type="submit">TXTダウンロード</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+
+  <script>
+    function copyResult() {
+      const textarea = document.getElementById("result-text");
+      navigator.clipboard.writeText(textarea.value);
+    }
+
+    function startOcrSubmit(form) {
+      const fileInput = form.querySelector('input[type="file"]');
+      if (!fileInput.files.length) {
+        return true;
+      }
+      document.getElementById("ocr-submit-btn").disabled = true;
+      document.getElementById("ocr-loading").hidden = false;
+      return true;
+    }
+  </script>
+</body>
+</html>
