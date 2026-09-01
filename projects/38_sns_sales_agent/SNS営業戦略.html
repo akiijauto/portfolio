@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SNS営業戦略 — 新規顧客獲得のための運用設計</title>
+<style>
+:root{--fg:#1a1a1a;--muted:#5b6472;--line:#e2e6ec;--bg:#fff;--accent:#1f5f8b;--warn:#8b3a1f;--ok:#1f6b45;--soft:#f6f8fa;}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;color:var(--fg);background:var(--bg);line-height:1.85;font-size:15px}
+.wrap{max-width:960px;margin:0 auto;padding:48px 24px 96px}
+h1{font-size:28px;line-height:1.4;margin:0 0 8px;border-bottom:3px solid var(--accent);padding-bottom:16px}
+h2{font-size:21px;margin:56px 0 16px;padding-left:12px;border-left:5px solid var(--accent)}
+h3{font-size:17px;margin:32px 0 10px;color:var(--accent)}
+h4{font-size:15px;margin:20px 0 6px}
+.meta{color:var(--muted);font-size:13px;margin-bottom:32px}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:13.5px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600;white-space:nowrap}
+code{background:var(--soft);padding:2px 5px;border-radius:3px;font-size:13px}
+pre{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:14px;overflow-x:auto;font-size:13px;line-height:1.7}
+.box{border:1px solid var(--line);border-radius:8px;padding:16px 20px;margin:20px 0;background:var(--soft)}
+.warn{border-left:5px solid var(--warn);background:#fdf6f3}
+.ok{border-left:5px solid var(--ok);background:#f3faf6}
+.note{border-left:5px solid var(--accent);background:#f3f8fc}
+ul,ol{padding-left:22px}
+li{margin:5px 0}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:#e8eef4;color:var(--accent);margin-right:6px}
+.ng{background:#f7e4de;color:var(--warn)}
+.go{background:#dff0e7;color:var(--ok)}
+.toc{border:1px solid var(--line);border-radius:8px;padding:16px 24px;background:var(--soft);font-size:14px}
+.toc ol{margin:0;padding-left:20px}
+.src{font-size:12px;color:var(--muted)}
+.src a{color:var(--muted)}
+hr{border:0;border-top:1px solid var(--line);margin:48px 0}
+.big{font-size:18px;font-weight:600;color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>SNS営業戦略 — 新規顧客獲得のための運用設計</h1>
+<p class="meta">作成日: 2026-09-01 ／ 対象: 業務自動化Webアプリ ポートフォリオ（Flask製35本・<a href="https://ai-l-a-b-o.com">ai-l-a-b-o.com</a>）を武器とした受託・保守案件の獲得<br>
+調査方法: Sonnetエージェント28体による並列Web調査 → Opusによる統合。数値には出典URLを併記し、裏付けが取れなかったものは「推測」と明記。</p>
+
+<div class="toc">
+<strong>目次</strong>
+<ol>
+<li><a href="#s1">結論サマリ（先に読む3分）</a></li>
+<li><a href="#s2">前提の訂正 — X APIのFree枠は既に存在しない</a></li>
+<li><a href="#s3">ポジショニングとオファー階段</a></li>
+<li><a href="#s4">メディア構成 — 逓増しないハブ&スポーク</a></li>
+<li><a href="#s5">運用アーキテクチャ — 4体の定期実行エージェント</a></li>
+<li><a href="#s6">ユーザーの作業は「週2回15分の承認」だけ</a></li>
+<li><a href="#s7">見込み客発掘（DM宛先探し）</a></li>
+<li><a href="#s8">DM送信文の設計</a></li>
+<li><a href="#s9">自動返信（返信トリアージ）の仕組み</a></li>
+<li><a href="#s10">法令・規約のレッドライン</a></li>
+<li><a href="#s11">コスト試算</a></li>
+<li><a href="#s12">KPIと90日ロードマップ</a></li>
+<li><a href="#s13">やらないと決めたこと</a></li>
+<li><a href="#s14">調査エビデンス一覧</a></li>
+</ol>
+</div>
+
+<h2 id="s1">1. 結論サマリ（先に読む3分）</h2>
+
+<div class="box ok">
+<p class="big">週1本の「ハブ記事」だけを人間が承認し、そこから全メディアの投稿・DM・返信の下書きを定期実行エージェントが自動生成する。ユーザーは週2回15分、承認キューで「承認 / 却下 / 微修正」を押すだけ。</p>
+</div>
+
+<table>
+<tr><th>論点</th><th>結論</th></tr>
+<tr><td>誰に売るか</td><td><strong>店舗運営（飲食・小売・現場業種）のDXに看板を絞る</strong>。HACCP点検・シフト作成・在庫予測・SOP生成という既存4本が一貫した文脈で語れる。経理・事務系は第2ラインとして温存。</td></tr>
+<tr><td>何を武器にするか</td><td>「35本ある」ことを数で売らない。<strong>「御社の業種に近い実物を、今すぐ触れる形で出せる」即時性</strong>として使う。商談前にデモURLを2〜3本送る。</td></tr>
+<tr><td>主戦場のメディア</td><td>ハブ＝自社サイト記事（SEO資産・canonical所有）。スポーク＝X / note / Threads / ニュースレター。<strong>すべて1本のハブから自動生成</strong>。</td></tr>
+<tr><td>アウトバウンド</td><td>公開情報（法人番号API・gBizINFO・補助金採択一覧）からリスト生成 → 企業の<strong>公開問い合わせフォーム / 公表メール</strong>宛に送信。SNSのDMは自動化せず、下書きまで自動・送信は手動。</td></tr>
+<tr><td>自動化の境界</td><td>SNSプラットフォームのAPI/自動化には依存しない。<strong>GitHub Actionsのcron + Claude API + Notion + Discord Webhook</strong>だけで、常駐サーバなしに承認ループが回る。</td></tr>
+<tr><td>月額コスト</td><td>約<strong>250〜600円</strong>（Claude API $1〜3 + X API従量 $0.2程度 + GitHub Actions無料枠）。</td></tr>
+<tr><td>期待値</td><td>発信のみなら初受注まで6ヶ月〜1年。<strong>発信＋アウトバウンド併用で90日以内に1〜3件</strong>の商談発生が現実的な上限（推測を含む、後述）。</td></tr>
+</table>
+
+<h2 id="s2">2. 前提の訂正 — X APIのFree枠は既に存在しない</h2>
+
+<div class="box warn">
+<p><strong>ご指定いただいた「Free枠のみ（月1,500投稿相当）」という前提は、2026年9月現在は成立しません。</strong></p>
+<p>X APIは2026年2月6日に「Free / Basic / Pro」のサブスクリプション型ティア制を廃止し、従量課金（pay-per-use）へ完全移行しました。新規開発者向けのFreeプラン登録は終了しており、既存のBasic契約も2026年6月1日から従量課金へ自動移行されています。</p>
+<p class="src">出典: <a href="https://docs.x.com/x-api/getting-started/pricing">X API pay-per-usage pricing and credits (docs.x.com 公式)</a> ／ <a href="https://devcommunity.x.com/t/announcing-the-launch-of-x-api-pay-per-use-pricing/256476">Announcing the Launch of X API Pay-Per-Use Pricing</a>（参照日 2026-09-01）</p>
+</div>
+
+<h3>従量課金の単価と、ここから導かれる設計判断</h3>
+<table>
+<tr><th>操作</th><th>単価</th><th>設計への影響</th></tr>
+<tr><td>投稿の作成</td><td>$0.015 / 件</td><td>週3投稿 × 4週 = 月12件で <strong>$0.18</strong>。実質無視できる。</td></tr>
+<tr><td>URL付き投稿の作成</td><td>$0.20 / 件</td><td>本文へのリンク添付は<strong>13倍のコスト</strong>。ただし後述の通りリンクは本文に入れない方がリーチも伸びるため、コストと運用が同じ方向を向く。</td></tr>
+<tr><td>投稿の読み取り</td><td>$0.005 / 件</td><td>見込み客のつぶやき検索を自動化すると青天井になりうる。<strong>今回は採用しない</strong>（§7参照）。</td></tr>
+<tr><td>DMインタラクション</td><td>$0.015 / 件</td><td>そもそも規約上、無差別な自動DMが禁止のため使わない。</td></tr>
+</table>
+
+<div class="box note">
+<p><strong>採用する方針:</strong> Xは「投稿の書き込みのみ」に用途を限定し、月額予算の上限を <strong>$3（約450円）</strong> に設定する。この枠内で週3投稿・リンクは返信欄（リプライ）に置く運用が収まります。読み取り系（検索・タイムライン取得）は一切使いません。</p>
+</div>
+
+<h2 id="s3">3. ポジショニングとオファー階段</h2>
+
+<h3>3-1. ポジショニング: 「店舗運営DX」に看板を絞る</h3>
+<p>3案を比較しました。</p>
+<table>
+<tr><th>案</th><th>内容</th><th>評価</th></tr>
+<tr><td>A: 何でも屋</td><td>経理〜店舗まで35本すべてを並べる</td><td>×　物量は見せられるが「うちの業種に強いか」で選ぶ経営者に刺さらず、単価が下がる</td></tr>
+<tr><td><strong>B: 業種ニッチ特化</strong></td><td><strong>店舗運営（HACCP点検・シフト・在庫予測・SOP）を看板に</strong></td><td>◎　4本が一貫した文脈で語れ、「動くデモが複数ある」ことが業界理解の証拠として機能する</td></tr>
+<tr><td>C: 機能ニッチ特化</td><td>OCR×自動化の専門家として立つ</td><td>△　技術差別化はできるが、汎用OCRベンダーとの価格比較になりやすい</td></tr>
+</table>
+<p><strong>推奨は案B。</strong> 経理・事務系アプリ群は看板から外し、商談内で「同じ仕組みで請求書処理も自動化できます」と横展開する第2ラインに置きます。</p>
+
+<h3>3-2. オファー階段（見る → 試す → 任せる）</h3>
+<table>
+<tr><th>段</th><th>商品</th><th>価格</th><th>目的</th></tr>
+<tr><td>0</td><td>公開デモ35本（登録不要・無料）</td><td>無料</td><td>信頼のハードルを下げる。商談前に業種一致のデモURLを2〜3本送る</td></tr>
+<tr><td>1</td><td>30分 無料業務診断（ヒアリング＋どのデモが流用できるか提案）</td><td>無料</td><td>商談化。DM/フォームのCTAはこれ1本に絞る</td></tr>
+<tr><td>2</td><td>お試しカスタム版（自店のデータ・業種語彙に合わせて調整、納期1週間）</td><td>3〜5万円</td><td>フロントエンド商品。相場（10〜100万円帯）の下限を意図的に切り、実績化と信頼構築を狙う</td></tr>
+<tr><td>3</td><td>本開発（機能追加・多店舗展開・既存システム連携）</td><td>30〜150万円</td><td>本受注。小規模業務システムの相場帯</td></tr>
+<tr><td>4</td><td>月額保守（軽微な改修・障害対応・データ確認）</td><td>月1〜3万円</td><td>ストック収益。業界基準は「開発費 × 年15〜20%」</td></tr>
+</table>
+<p class="src">相場根拠: AI・業務自動化の小規模開発は10万〜100万円／2週間〜3ヶ月（<a href="https://note.com/stock_value0407/n/n022195f6bed0">note</a>）、在庫管理30〜150万円・予約管理50〜200万円（<a href="https://www.ripla.co.jp/blog/system/small-scale-system-costs/">ripla</a>）、保守は開発費の年15〜20%（<a href="https://funbrew.tech/blog/system-maintenance-cost-guide">FUNBREW</a>）</p>
+
+<h3>3-3. メッセージの型</h3>
+<div class="box">
+<p>「<strong>{業種}の{具体業務}、無料デモで今すぐ触れます。</strong>御社のデータで動くか、30分の無料診断でお見せします」<br>
+→ 気に入ったら3万円・1週間でお試しカスタム<br>
+→ 本格導入は運用に合わせて30万円〜、月額保守1〜3万円</p>
+</div>
+
+<h2 id="s4">4. メディア構成 — 逓増しないハブ&スポーク</h2>
+
+<h3>4-1. 構造</h3>
+<pre>
+【ハブ】自社サイト（ai-l-a-b-o.com）の長文記事  ← 週1本。ここだけ人間が中身を承認する
+   │                                            SEO資産・canonical所有権を持てる唯一の場所
+   ├─ スポーク: X          （100字未満・リンクはリプ欄）
+   ├─ スポーク: note        （記事転載、rel=canonicalでハブへ権威を戻す）
+   ├─ スポーク: Threads     （200字未満・会話誘発型）
+   ├─ スポーク: ニュースレター（3行サマリ＋CTA）
+   └─ スポーク: (将来追加)   ← capabilities設定1行 + アダプタ1クラスで済む
+</pre>
+<p><strong>SNS投稿はハブになれません。</strong> プラットフォーム側がcanonicalの所有権を持たないため、SEO資産が自分の手元に残らないからです。noteやMediumへ全文転載する場合のみ <code>rel=canonical</code> をハブへ向ける必要があります（SNS本文の重複はGoogleの検索評価にはほぼ影響しません）。</p>
+
+<h3>4-2. 媒体別の変換ルール（capabilities として設定ファイルに持つ）</h3>
+<table>
+<tr><th>媒体</th><th>推奨頻度</th><th>最適な長さ</th><th>本文リンク</th><th>備考</th></tr>
+<tr><td>X</td><td>週3</td><td>100字未満（100字超より平均+17%のエンゲージメント）</td><td class="ng">入れない</td><td>リンクは初速リーチを落とすうえ、API単価も13倍。リプ欄に置く</td></tr>
+<tr><td>note</td><td>週1（ハブの転載）</td><td>ハブ相当</td><td>可</td><td>ドメインパワーが強く投稿当日〜数日でインデックスされる</td></tr>
+<tr><td>Threads</td><td>週3</td><td>200字未満</td><td class="ng">入れない</td><td>ハッシュタグは配信ランキングにほぼ影響なし（検索インデックス用のみ）</td></tr>
+<tr><td>ニュースレター</td><td>月2</td><td>3行サマリ＋CTA</td><td>可</td><td>プラットフォームに依存しない唯一の顧客リスト資産</td></tr>
+<tr><td>LinkedIn</td><td>（当面見送り）</td><td>1,800〜2,100字</td><td>—</td><td>日本の登録者は約500万人でIT/コンサル/外資に偏る。店舗オーナー層には届きにくい</td></tr>
+</table>
+<p><strong>投稿時間帯は媒体ごとに作り分けません。</strong> 共通解として「平日 火〜木の 9〜11時 または 19〜21時（JST）」に統一します。個別最適化の工数に対して効果が見合わないためです。</p>
+
+<h3>4-3. 「メディア数に逓増しない」ことを担保する設計原則</h3>
+<div class="box">
+<ol>
+<li><strong>差分はコードでなくデータに寄せる。</strong> 文字数上限・メディア形式・リンク可否・ハッシュタグ可否は <code>capabilities</code> としてJSON化し、if分岐を作らない。</li>
+<li><strong>アダプタは1インターフェース1クラス。</strong> 新規媒体の追加が「1ファイル＋設定追加」で完結しない場合、それは設計が崩れた兆候としてレビューで弾く。</li>
+<li><strong>配信結果は媒体単位で独立管理。</strong> 1媒体の失敗が他媒体の成功を巻き込まない（<code>DeliveryAttempt</code> を post × integration の粒度で持つ）。</li>
+<li><strong>承認は媒体ごとに行わない。</strong> ハブ1本の承認で全スポークが確定する。ここが「ユーザー負担がメディア数に比例しない」ことの本体。</li>
+</ol>
+<p class="src">参考実装: <a href="https://deepwiki.com/gitroomhq/postiz-app">Postiz</a>（33プロバイダを SocialAbstract 基底クラスで抽象化）／ <a href="https://deepwiki.com/inovector/mixpost">Mixpost</a>（SocialProviderManager による契約点方式）</p>
+</div>
+
+<h3>4-4. 中間フォーマット（正規化ポスト）</h3>
+<pre>Post {
+  id, source_hub_id
+  body: { text, mentions[], hashtags[] }     // 媒体非依存の共通本文
+  media: [{ type, path, alt_text }]
+  link: { url, utm }                          // 媒体ごとに「本文/リプ/プロフィール」へ振り分け
+  targets: [{ platform, overrides? }]         // 差分はここにだけ書く
+  status: draft | pending_approval | queued | published | partial_failed
+}
+IntegrationConfig {
+  platform, credentials_ref                   // 生のトークンは持たず参照のみ
+  capabilities: { max_text_len, allow_inline_link, media_types[], supports_thread }
+}</pre>
+
+<h2 id="s5">5. 運用アーキテクチャ — 4体の定期実行エージェント</h2>
+
+<div class="box note">
+<p><strong>設計の芯:</strong> SNSプラットフォームのAPIやブラウザ自動化に依存しない。常駐サーバも持たない。<strong>GitHub Actions の cron で起動するバッチ</strong>が、Notionをキューに、Discordを通知窓口にして承認ループを回す。</p>
+</div>
+
+<h3>5-1. 全体フロー</h3>
+<pre>
+ [毎週月 03:17 JST]  ①ネタ収集エージェント
+        git log / GitHub Releases / Notion開発記録
+          → 「詰まり→解決」ペア、リリース、数値変化を抽出
+          → ハブ記事の骨子を3案生成 → Notion「投稿候補」DBへ（status=承認待ち）
+                                                    │
+ [毎週火 09:00 JST]  ②配信エージェント              ▼ ユーザーが1案を選んで承認
+        承認済みハブ記事 → 媒体別に変換（X/note/Threads/NL）
+          → Notion「配信キュー」DBへ（status=承認待ち）→ Discord通知
+                                                    │
+                                        ▼ ユーザーが一括承認（低リスクのため）
+        次回cron実行時に status=承認済み を検知 → X APIで投稿 / note下書き作成 / NL下書き
+
+ [毎週水 03:17 JST]  ③見込み客発掘エージェント
+        法人番号API / gBizINFO / 補助金採択一覧 → スコアリング
+          → 上位20社の宛先候補 + 個別化DM下書き → Notion「営業リスト」DBへ
+                                                    │
+                                        ▼ ユーザーが承認した分だけ、人間が送信
+ [毎日 08:00 / 18:00 JST]  ④返信トリアージエージェント
+        受信箱・問い合わせフォーム → 5分類 + 返信下書き生成
+          → Notion「返信キュー」DBへ → Discord通知（高温度リードのみ即時通知）
+</pre>
+
+<h3>5-2. なぜ Discord のボタンで承認しないのか</h3>
+<p>Discordのボタン（コンポーネント）は、通常のIncoming Webhookから送るとエラーも出ないまま<strong>表示されません</strong>（アプリケーション所有のWebhookのみ対応）。さらにボタンのクリックを受け取るには公開HTTPSのInteractions Endpointが必須で、常駐サーバが要ります。</p>
+<p>したがって <strong>Discordは「通知＋リンク型ボタン（URLへ飛ばすだけ）」に限定</strong>し、実際の承認操作はNotionページ上のボタンプロパティで行います。これで常駐サーバなし・cronのみで承認ループが閉じます。</p>
+<p class="src">出典: <a href="https://github.com/discord/discord-api-docs/discussions/6990">discord-api-docs Discussion #6990</a> ／ <a href="https://developers.notion.com/reference/request-limits">Notion API Request limits</a>（平均3req/秒・15分あたり2,700コール、全プラン共通）</p>
+
+<h3>5-3. GitHub Actions cron の実務上の注意</h3>
+<table>
+<tr><th>落とし穴</th><th>対策</th></tr>
+<tr><td>毎時0分付近は負荷でジョブが遅延・ドロップする</td><td>cron式の分を <code>:17</code> 等にずらす</td></tr>
+<tr><td>60日間リポジトリに活動がないと schedule が自動停止する</td><td>成果物（配信ログ・スコアリング結果）を毎回リポジトリへコミットする設計にする。これ自体が activity になり一石二鳥</td></tr>
+<tr><td>Privateリポジトリは月2,000分の無料枠を超えると課金</td><td><strong>Publicリポジトリで運用</strong>（ホスト型ランナーは無料・無制限）。秘匿情報はSecretsに置きコードに残さない</td></tr>
+<tr><td>遅延で前回ジョブと重なり二重投稿</td><td><code>concurrency: { group, cancel-in-progress: false }</code> を必ず付ける</td></tr>
+<tr><td>Artifactsは最大90日で消える</td><td>恒久データはリポジトリへコミット</td></tr>
+</table>
+<p class="src">出典: <a href="https://docs.github.com/en/actions/concepts/billing-and-usage">GitHub Actions billing</a> ／ <a href="https://github.com/orgs/community/discussions/86087">60日非活動での自動停止</a></p>
+
+<h3>5-4. 既存リポジトリ資産の再利用</h3>
+<p>ゼロから作る必要はほとんどありません。</p>
+<table>
+<tr><th>既存資産</th><th>再利用ポイント</th></tr>
+<tr><td><code>shared/utils.py</code></td><td><code>call_claude_json / call_claude_text / call_claude_chat</code> に <code>cache_prefix</code> 引数が既にある＝プロンプトキャッシュ対応済み。<code>AI_PROVIDER</code> でGemini/Anthropicを無改修で切替可能</td></tr>
+<tr><td><code>shared/notify.py</code></td><td><code>notify_admin()</code> が障害通知（Webhook URLのマスク・429判別まで実装済み）</td></tr>
+<tr><td><code>projects/15_sns_management_hub/</code></td><td>投稿生成・予約投稿・Notion連携・エンゲージメント分析・<code>notifier.py:send_discord()</code>（embed形式）が揃っており、本件の直接の母体になる</td></tr>
+<tr><td><code>projects/29_form_notion_bot/</code></td><td>フォーム入力→AI分類→Notion保存→通知の一気通貫パターン。返信トリアージにそのまま流用可</td></tr>
+<tr><td><code>projects/17_inquiry_crm/</code></td><td>SQLAlchemyの <code>Inquiry</code> モデル。営業リード管理DBの雛形</td></tr>
+<tr><td><code>projects/09_daily_bot/scheduler.py</code></td><td>APScheduler + CronTrigger + JST固定の動的スケジュール変更UI</td></tr>
+</table>
+<div class="box warn">
+<p><strong>注意:</strong> モジュールレベルでAPSchedulerを起動するプロジェクトは <code>hub_app.py</code> の <code>APPS</code> に登録すると多重起動します。本件は <code>start_all.py</code> の <code>PROJECTS</code> に登録して個別プロセス起動とするか、スケジューラを持たずGitHub Actions側に寄せるかの二択です。<strong>後者（Actions側に寄せる）を推奨</strong>します — 常駐プロセスが不要になり、VPS費用もゼロになるためです。</p>
+</div>
+
+<h2 id="s6">6. ユーザーの作業は「週2回15分の承認」だけ</h2>
+
+<h3>6-1. 承認画面に出す情報と操作</h3>
+<table>
+<tr><th>要素</th><th>仕様</th></tr>
+<tr><td>結論の先出し</td><td>エージェントの提案（投稿本文 / DM文面 / 返信文）を最上部に表示。生成理由・根拠は折りたたみの裏</td></tr>
+<tr><td>リスクタグ</td><td>高（初回DM・金額提示を含む返信）／中（社外公開の投稿）／低（既存文脈の定型返信）</td></tr>
+<tr><td>影響範囲</td><td>送信先・公開日時・媒体を1行で</td></tr>
+<tr><td>操作</td><td><strong>承認 / 却下 / 微修正</strong> の3択のみ。微修正は本文が事前入力されたテキストエリアが開き、編集後も「送信」1ボタンで完結</td></tr>
+<tr><td>一括承認</td><td><strong>低リスクタグのみ</strong>に限定。対象件数と最大影響をモーダルで確認させてから確定</td></tr>
+<tr><td>失効</td><td>72時間で自動失効（陳腐化した案件が溜まって雑な承認を誘発するのを防ぐ）</td></tr>
+</table>
+<p><strong>1件あたりの目標判断時間: 低リスク5〜15秒／要文脈確認30〜60秒。1週間の承認業務合計を30分以内に収める</strong>ことを設計上の制約とします（この目標値は業界の一次データではなく、承認キュー設計論からの敷衍＝推測です）。</p>
+
+<h3>6-2. 週次の実作業</h3>
+<table>
+<tr><th>タイミング</th><th>やること</th><th>所要</th></tr>
+<tr><td>月曜 朝</td><td>ハブ記事の骨子3案から1案を選び承認（必要なら1〜2箇所を微修正）</td><td>10分</td></tr>
+<tr><td>火曜 朝</td><td>媒体別の投稿下書きを一括承認（低リスク）</td><td>3分</td></tr>
+<tr><td>水曜 朝</td><td>営業リスト20社から送る先を選び、DM/フォーム文面を承認 → 送信</td><td>15分</td></tr>
+<tr><td>随時</td><td>Discord通知が来た「高温度リード」の返信下書きを承認</td><td>1件2分</td></tr>
+</table>
+<p class="big">合計: 週あたり約30分。メディアを1つ増やしても、増えるのは火曜の一括承認に並ぶカードが1枚だけです。</p>
+
+<h3>6-3. アンチパターン（設計上禁止する）</h3>
+<ul>
+<li>件数上限もリスク区別もない全件チェックボックス → 一括承認（思考停止承認の温床）</li>
+<li>詳細を開かないと結論が分からないレイアウト</li>
+<li>期限切れの自動失効がなく無限に滞留するキュー</li>
+<li>高リスクと低リスクが同じ列に並び、重要案件が埋もれる</li>
+</ul>
+
+<h2 id="s7">7. 見込み客発掘（DM宛先探し）</h2>
+
+<h3>7-1. 使うデータソース（すべて公開情報・無料）</h3>
+<table>
+<tr><th>ソース</th><th>API</th><th>取れる項目</th><th>用途</th></tr>
+<tr><td><a href="https://www.houjin-bangou.nta.go.jp/webapi/">国税庁 法人番号公表サイト</a></td><td>Web-API（無償のアプリケーションID要）</td><td>法人番号・商号・本店所在地（基本3情報のみ）</td><td>母集団の生成（地域で絞る）</td></tr>
+<tr><td><a href="https://info.gbiz.go.jp/">gBizINFO</a>（経産省）</td><td>REST API（トークン要・商用可）</td><td>設立年月・資本金・従業員数・補助金採択歴・届出認定</td><td><strong>スコアリングの主力</strong></td></tr>
+<tr><td><a href="https://it-shien.smrj.go.jp/download/grantdecision_list/">デジタル化・AI導入補助金 交付決定事業者一覧</a></td><td>なし（PDF/CSV）</td><td>事業者名・所在地・導入ITツール種別</td><td>IT投資意欲の強いシグナル</td></tr>
+<tr><td>インボイス発行事業者公表サイト</td><td>Web-API・全件CSV</td><td>事業者名・登録番号・所在地</td><td>名寄せ・実在確認</td></tr>
+</table>
+
+<h3>7-2. スコアリング（上位20社/週だけを人間に見せる）</h3>
+<table>
+<tr><th>特徴量</th><th>加点の考え方</th></tr>
+<tr><td>補助金の採択歴（特にIT導入系）</td><td><strong>最重要。</strong> 予算確保と投資意欲が実証済み</td></tr>
+<tr><td>従業員数 10〜100名</td><td>専任情シスがおらず、かつ外注予算がある帯</td></tr>
+<tr><td>業種が飲食・小売・宿泊・食品製造</td><td>看板（店舗運営DX）と一致</td></tr>
+<tr><td>設立年数</td><td>短いほどIT未整備の可能性（ただし予算も薄い→中程度の重み）</td></tr>
+<tr><td>所在地</td><td>初期は自身の商圏に絞り、対面商談を可能にする</td></tr>
+</table>
+
+<h3>7-3. 「SNS上で困っている人を探す」は今回採用しない</h3>
+<div class="box warn">
+<p>「Excel 手作業 大変」のような課題つぶやきを検索して反応するソーシャルセリングは有効な手法ですが、<strong>Xの検索エンドポイントは読み取り従量課金（$0.005/件）で青天井</strong>になり、「都度予算を決める」という方針と噛み合いません。またNitter等のミラーやスクレイピングはX利用規約が明示的に禁止する行為です。</p>
+<p><strong>代替:</strong> 週1回5分、公式検索UIを人間が目視で確認し、良い投稿があればその場でリプライする運用に留めます。自動化しません。</p>
+</div>
+
+<h2 id="s8">8. DM送信文の設計</h2>
+
+<h3>8-1. 数字で押さえるべきベンチマーク</h3>
+<table>
+<tr><th>指標</th><th>値</th><th>出典</th></tr>
+<tr><td>B2Bコールドメールの平均返信率</td><td>2026年時点で3.43%（2019年 8.5% → 低下傾向）。上位層は10〜18%</td><td><a href="https://instantly.ai/cold-email-benchmark-report-2026">Instantly 2026</a></td></tr>
+<tr><td>送信数と返信率の関係</td><td>50件以下の厳選キャンペーン 5.8% ／ 1,000件超の大量送信 2.1%（<strong>約2.8倍の差</strong>）</td><td><a href="https://instantly.ai/blog/cold-email-reply-rate-benchmarks/">Instantly</a></td></tr>
+<tr><td>フォローアップの効き</td><td>4〜7通のシーケンス 27% ／ 1〜3通のみ 9%。<strong>全返信の42%はフォローアップ由来</strong></td><td><a href="https://woodpecker.co/blog/cold-email-statistics/">Woodpecker</a></td></tr>
+<tr><td>パーソナライズ効果</td><td>氏名以外の高度な個別化で返信率18%（汎用テンプレの約2倍）。ただし全文を個別化している送信者は5%のみ</td><td><a href="https://www.lemlist.com/blog/how-many-cold-email-follow-ups">lemlist</a></td></tr>
+<tr><td>フォロー4通目以降の副作用</td><td>配信停止率が3倍、スパム判定リスクも3倍超。7通以上を返信なしで送ると到達率が30日で72%→48%に低下</td><td><a href="https://belkins.io/blog/sales-follow-up-statistics">Belkins</a></td></tr>
+<tr><td>返信速度</td><td>5分以内の対応は30分待機比で資格化率21倍。78%の顧客は最初に返信した企業から購入</td><td><a href="https://greetnow.com/blog/lead-response-time-statistics">Lead Response Time Stats</a></td></tr>
+</table>
+<p class="src">※これらは主に英語圏B2Bのデータです。日本語圏の実測値は不明であり、そのまま当てはまる保証はありません（推測）。日本語のBtoB営業メールは本文150〜250字程度が読了率で有利という国内向けガイドがあります。</p>
+
+<h3>8-2. 文面テンプレート（スロット形式）</h3>
+<pre>[件名]     {業種} × {具体的な課題キーワード}（15〜25字）
+[冒頭1文]  {相手固有の事実}への言及 ← 補助金採択・求人内容・公開情報から。出典URL必須
+[課題提示] {業種}の{役割}が抱えがちな{課題}について、1〜2文
+[実績]     同業種・同規模での{定量成果}を1文 ＋ デモURL 2〜3本
+[CTA]      1通1目的。ここでは「30分の無料業務診断」1本に固定
+[署名]     氏名・屋号・サイトURL・1行の事業説明
+[配信停止] オプトアウトの導線を必ず明記（特定電子メール法）
+[全体]     日本語150〜250字
+</pre>
+
+<h3>8-3. フォローアップ・シーケンス（日本の商習慣に合わせて短縮）</h3>
+<table>
+<tr><th>Day</th><th>内容</th></tr>
+<tr><td>0</td><td>初回（課題仮説＋デモURL＋無料診断CTA）</td></tr>
+<tr><td>3</td><td>1回目フォロー（軽いリマインド＋補足情報）</td></tr>
+<tr><td>8</td><td>2回目フォロー（別角度の切り口・事例を1つ追加）</td></tr>
+<tr><td>21</td><td>3回目フォロー（ブレイクアップ：「今回はこれで最後のご連絡とします。再開されたい時期があればお知らせください」）</td></tr>
+</table>
+<p>海外の定石は6〜8通ですが、<strong>日本のBtoBでは3〜4通・3週間に短縮</strong>するのが穏当です（推測。日本語圏の定量データは確認できませんでした）。<strong>打ち切り条件:</strong> 30日間反応なし／配信停止・バウンス／担当者の異動判明／明確な断り。断られた先は四半期後の再アプローチ候補としてクローズします。</p>
+
+<h3>8-4. 生成パイプラインと品質ゲート</h3>
+<p>全文をLLMにゼロから書かせません。<strong>可変域を「冒頭の1〜2文」だけに絞る</strong>のが誇張・事実誤認を防ぐ核心です。</p>
+<pre>① 企業の公開情報 → 「ファクトシート」を構造化データとして抽出（出典URLを必ず紐付け）
+② ファクトシートから「個別化に使える一文」の候補を複数生成 ← 出典なしの候補は破棄
+③ 定型テンプレート ＋ 選ばれた1文 を結合
+④ 品質ゲート（下記）を通過したものだけを承認キューへ
+</pre>
+<p><strong>自動で弾く条件:</strong></p>
+<ul>
+<li>出典URLが紐付いていない個別化文（ハルシネーション対策の最重要ゲート）</li>
+<li>数値・固有名詞（社名・金額・役職・日付）がファクトシートと完全一致しない</li>
+<li>禁止語リストへのヒット（「業界No.1」「必ず」「絶対」「〜だけで解決」など景表法リスク表現）</li>
+<li>競合の誹謗・比較優良表示</li>
+<li>過去に同一企業へ送った文面との類似度が閾値超（コピペ感の温床）</li>
+<li>文字数がレンジ外／配信停止導線の欠落</li>
+</ul>
+<p>一次判定はルールベース（正規表現・辞書照合）＋ Haiku での軽量判定の二段構成とし、最終承認は必ず人間が行います。</p>
+
+<h2 id="s9">9. 自動返信（返信トリアージ）の仕組み</h2>
+
+<div class="box warn">
+<p><strong>「自動返信」は完全自動送信にしません。</strong> 分類と下書き生成までを自動化し、送信は1クリック承認とします。初期運用で自動送信を許すと、誤爆した1通が信用を毀損するコストの方が、節約できる数十秒より大きいためです。</p>
+</div>
+
+<h3>9-1. 分類スキーマ</h3>
+<pre>{
+  "message_id": "string",
+  "category": "interested | needs_conditions | not_now | follow_up_later | spam",
+  "confidence": 0.0-1.0,
+  "key_signals": ["判断根拠となった文言"],
+  "suggested_followup_date": "YYYY-MM-DD | null",
+  "draft_reply": "返信下書き",
+  "requires_human_review": true/false
+}</pre>
+<p><strong>安全側の固定ルール:</strong></p>
+<ul>
+<li><code>confidence &lt; 0.85</code> なら無条件で <code>requires_human_review = true</code></li>
+<li><code>interested</code> / <code>needs_conditions</code>（＝商談・金額に触れうる）は confidence によらず常に人間レビュー＋Discord即時通知</li>
+<li><code>spam</code> の自動アーカイブは <code>confidence &gt; 0.95</code> のときのみ</li>
+</ul>
+
+<h3>9-2. 失敗モードと対策</h3>
+<table>
+<tr><th>失敗モード</th><th>対策</th></tr>
+<tr><td>誤ってスパム分類し、商談機会を失う</td><td>低confidence・境界カテゴリは必ず人間キューへ。自動アーカイブは高confidenceのみ</td></tr>
+<tr><td>誤送信（宛先違い）</td><td>承認ボタン押下の直前に宛先とスレッドを再表示。初期は自動送信を完全にオフ</td></tr>
+<tr><td>承認待ちの滞留でSLA（返信速度）を落とす</td><td><code>interested</code> のみDiscordでモバイル通知し、数分以内の承認を促す。他は週次バッチで十分</td></tr>
+<tr><td>カテゴリの意味的重複で判断に迷う</td><td><code>key_signals</code> に根拠文言を出させ、人間が3秒で判断できるようにする</td></tr>
+</table>
+
+<h2 id="s10">10. 法令・規約のレッドライン</h2>
+<p class="src">※以下は公開情報の調査結果であり、法的助言ではありません。実運用の前に必要に応じて専門家にご確認ください。</p>
+
+<h3>10-1. 特定電子メール法（メール送信）</h3>
+<p>2008年改正により、広告・宣伝目的のメールは<strong>事前同意（オプトイン）が原則</strong>です。ただし法律上、<strong>「自己の電子メールアドレスを公表している団体、または営業を営む個人」はオプトイン規制の対象外</strong>とされています。企業がサイトに公開している問い合わせ窓口・代表メールへのBtoB営業は、この例外に該当しうる形です。</p>
+<div class="box ok">
+<p><strong>採用する運用:</strong> 送信先は「公開されている法人の問い合わせフォーム／公表メールアドレス」に限定する。個人名に紐づくアドレスは使わない。<strong>すべての送信文に配信停止（オプトアウト）の導線と送信者の氏名・連絡先を明記する。</strong></p>
+<p class="src">出典: <a href="https://www.soumu.go.jp/main_sosiki/cybersecurity/kokumin/basic/legal/08/">総務省 特定電子メール法</a> ／ <a href="https://www.soumu.go.jp/main_content/000060967.pdf">総務省ガイドライン(PDF)</a></p>
+</div>
+
+<h3>10-2. 個人情報保護法</h3>
+<p>法人の代表番号・問い合わせ窓口メールなど個人に紐づかない情報は個人情報に該当しない可能性が高い一方、<strong>名刺やSNSから得た個人名付きの情報をデータ化・リスト化すると個人情報として規制対象</strong>になり、利用目的の特定・通知義務が生じます。今回のリストは法人単位の公開情報に限定し、個人名は含めません。</p>
+
+<h3>10-3. SNS各社の規約 — 自動化の可否</h3>
+<table>
+<tr><th>媒体</th><th>自動投稿</th><th>自動DM</th><th>データ取得</th></tr>
+<tr><td>X</td><td class="go">公式API経由なら可</td><td class="ng">NG（同意なき大量・自動DMは禁止）</td><td class="ng">NG（規約上API経由のみ）</td></tr>
+<tr><td>Threads</td><td class="go">公式Threads API経由なら可</td><td class="ng">NG</td><td class="ng">NG</td></tr>
+<tr><td>Instagram</td><td class="ng">NG（Graph API経由のビジネスアカウントのみ可。非公式クライアントは凍結対象）</td><td class="ng">NG</td><td class="ng">グレー〜NG</td></tr>
+<tr><td>LinkedIn</td><td class="ng">NG</td><td class="ng">NG（自動接続申請・自動メッセージは明確に禁止）</td><td class="ng">グレー（hiQ判決でCFAA違反は否定されたが、hiQ自身は規約違反で敗訴・恒久的差止命令）</td></tr>
+<tr><td>Facebook</td><td class="ng">NG</td><td class="ng">NG</td><td class="ng">グレー〜NG</td></tr>
+<tr><td>note</td><td class="ng">グレー（明示禁止条項はないが「運営を妨げる行為」に抵触しうる）</td><td>—</td><td class="ng">グレー</td></tr>
+</table>
+
+<div class="box warn">
+<p><strong>絶対に実装しないこと:</strong></p>
+<ul>
+<li>Selenium / Playwright でログインセッションを操作しての投稿・いいね・フォロー・DM送信（全媒体で規約違反、検出技術は高度化しており2026年は警告なしの即時停止事例あり）</li>
+<li>ログイン状態でのHTML解析による自動データ収集</li>
+<li>複数アカウントでの相互フォロー・いいね回し・DMスパム</li>
+<li>「公開データなら合法」という判例の過信（刑事責任が否定されても、規約違反によるアカウント凍結と民事責任は別問題）</li>
+<li>クラウドソーシング各社（ランサーズ/クラウドワークス）の新着案件スクレイピング（規約で禁止されている可能性が高く、アカウント凍結リスク）</li>
+</ul>
+</div>
+
+<h2 id="s11">11. コスト試算</h2>
+<table>
+<tr><th>項目</th><th>月額</th><th>根拠</th></tr>
+<tr><td>Claude API</td><td>$1〜3（約150〜450円）</td><td>下記の内訳参照</td></tr>
+<tr><td>X API（投稿のみ）</td><td>$0.18〜0.5（約30〜75円）</td><td>週3投稿 × $0.015、リンクは本文に入れない</td></tr>
+<tr><td>GitHub Actions</td><td>0円</td><td>Publicリポジトリはホスト型ランナー無料・無制限</td></tr>
+<tr><td>Notion / Discord / ニュースレター(beehiiv 2,500購読者まで無料)</td><td>0円</td><td>いずれも無料枠内</td></tr>
+<tr><td class="big">合計</td><td class="big">約 250〜600円 / 月</td><td></td></tr>
+</table>
+
+<h3>11-1. Claude APIのコスト最小化（実装必須の4点）</h3>
+<table>
+<tr><th>技術</th><th>仕様</th><th>本件での使い方</th></tr>
+<tr><td>プロンプトキャッシュ</td><td>書き込み: 5分TTL=入力単価の1.25倍／1時間TTL=2倍。<strong>読み出し=0.1倍（90%割引）</strong>。最小キャッシュ長はOpus 5で512、Sonnet 5で1,024、Haiku 4.5で<strong>4,096</strong>トークン。ブレークポイントは最大4つ。順序は <code>tools → system → messages</code> 固定</td><td>商材説明・トーン指定・few-shot例をsystem末尾でキャッシュ。可変情報（日付・対象企業）は必ず最後尾に置く</td></tr>
+<tr><td>Batch API</td><td><strong>入出力とも一律50%オフ。</strong> 大半は1時間以内に完了、24時間で失効（失効分は課金なし）。1バッチ最大10万リクエスト／256MB。プロンプトキャッシュ割引と<strong>併用可</strong></td><td>週次の見込み客スコアリング・DM文面生成のようなレイテンシ不要の処理は全てBatchに寄せる</td></tr>
+<tr><td>モデルの使い分け</td><td>Haiku 4.5 $1/$5、Sonnet 5 $2/$10、Opus 5 $5/$25（入力/出力・百万トークンあたり）</td><td>分類・品質ゲート判定＝Haiku／文面と記事の生成＝Sonnet／戦略の見直し＝Opus（月1回程度）</td></tr>
+<tr><td>出力上限の制御</td><td><code>max_tokens</code> はハード上限。<code>output_config.effort</code>（low〜max）で思考の深さを制御</td><td>分類タスクは <code>max_tokens: 256, effort: low</code> に固定</td></tr>
+</table>
+<p class="src">出典: <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">Prompt caching</a> ／ <a href="https://platform.claude.com/docs/en/build-with-claude/batch-processing">Batch processing</a>（参照日 2026-09-01）</p>
+<p><strong>試算例（週次バッチ・月30回相当、システムプロンプト2,000トークン＋可変500トークン＋出力200トークン）:</strong> 素朴実装で約$2.5/月 → 1時間TTLキャッシュ活用で約$1.2/月 → Batch併用でさらに半減。<span class="src">（この月額計算自体は仮定に基づく概算であり未確認。単価・割引率は上記公式ドキュメントで確認済み）</span></p>
+
+<h2 id="s12">12. KPIと90日ロードマップ</h2>
+
+<h3>12-1. 最初の90日で見る指標は3つだけ</h3>
+<table>
+<tr><th>#</th><th>指標</th><th>取得手段（追加課金なし）</th></tr>
+<tr><td>1</td><td>プロフィールへのアクセス数</td><td>X投稿ごとのアナリティクス画面（無料）。露出がフォロー外の関心に転換しているかの最短の確認</td></tr>
+<tr><td>2</td><td>UTM別のサイト流入・フォーム送信数</td><td>投稿ごとにUTM付きURLを発行 → GA4「トラフィック獲得」で <code>utm_campaign</code> 別に確認</td></tr>
+<tr><td>3</td><td>問い合わせ数（流入元タグ付き）</td><td>問い合わせフォームに「流入元」欄を設け、UTMと突合</td></tr>
+</table>
+<p>※ アカウント全体のX Analyticsは Premium が必要ですが、<strong>投稿単位のアナリティクスは無料で見られます</strong>。API課金は不要です。</p>
+
+<h3>12-2. 90日ロードマップ</h3>
+<table>
+<tr><th>期間</th><th>目標</th><th>打ち手</th></tr>
+<tr><td>Day 1-30<br>基盤構築</td><td>仕組みが自走すること</td><td>①エージェント4体の実装とcron設置 ②プロフィール・実績の言語化（店舗運営DXの看板に統一） ③ハブ記事4本 ④既存の知人・元同僚へ「こういう活動を始めた」の個別連絡（ここが初月で最も効く）</td></tr>
+<tr><td>Day 31-60<br>信頼蓄積 ＋ アウトバウンド開始</td><td>商談1件</td><td>①ハブ記事を継続（累計8本） ②見込み客リストからの送信を週20社で開始 ③リプライ・コメントでの接点作り ④無料診断の実施と、そこからのお試しカスタム提案</td></tr>
+<tr><td>Day 61-90<br>転換</td><td>お試しカスタム受注1件</td><td>①診断で得た生の課題をハブ記事にフィードバック（ネタの質が跳ね上がる） ②実績記事・事例ページの整備 ③返信率とスコアリング精度の見直し</td></tr>
+</table>
+
+<h3>12-3. 期待値の現実（楽観しないこと）</h3>
+<div class="box warn">
+<ul>
+<li>「発信のみ」で初受注に至るのは早くて3ヶ月、平均的には<strong>6ヶ月〜1年</strong>。</li>
+<li>「発信＋アウトバウンド」併用なら1〜2ヶ月で最初の面談が発生する可能性が明確に高まる（定量データなし・推測）。</li>
+<li><strong>90日終了時点の現実的な見込みは、商談1〜3件・受注0〜1件</strong>（推測。根拠となる定量調査は確認できませんでした）。</li>
+<li>最大のリスクは市場ではなく<strong>継続の断念</strong>です。ブログ領域の類推では3ヶ月で約7割が離脱します。だからこそ「週30分の承認だけ」に運用負荷を落とす設計が、戦略の本体です。</li>
+</ul>
+</div>
+
+<h3>12-4. 撤退・方針転換の判断基準</h3>
+<ul>
+<li><strong>90日:</strong> 発信のみで問い合わせ・DMがゼロなら、投稿内容ではなく「能動的接点の不足」を疑い、アウトバウンドの送信数を倍にする。</li>
+<li><strong>180日:</strong> エンゲージメント（保存・返信・DM）自体が伸びていないなら、ターゲット設定か投稿の型そのものを見直す。</li>
+<li><strong>返信率が2%を下回る:</strong> 文面ではなくリストの質（スコアリングの特徴量）を先に疑う。50件以下の厳選が1,000件超の2.8倍という数字は、リスト精度の重要性を示しています。</li>
+<li><strong>12ヶ月:</strong> アウトバウンドも試して受注ゼロなら、発信媒体・専門テーマの再選定を検討する。</li>
+</ul>
+
+<h2 id="s13">13. やらないと決めたこと</h2>
+<table>
+<tr><th>やらないこと</th><th>理由</th></tr>
+<tr><td>YouTube・ショート動画</td><td>制作は自動化できるが、「投稿→受託」の転換を裏付ける日本の一次事例が確認できず、コメント対応・信頼構築の人的工数が自動化できない。ROI未検証のまま本格投資しない</td></tr>
+<tr><td>LinkedInの本格運用</td><td>日本の登録者約500万人はIT/コンサル/外資に偏り、店舗オーナー層に届きにくい。無料枠は週80〜100件の申請上限＋パーソナライズ招待月5件程度と制約が厳しい。自動化は明確な規約違反</td></tr>
+<tr><td>SNS上の課題つぶやき自動検索</td><td>X APIの読み取り従量課金が青天井。スクレイピング・ミラーは規約違反。週5分の手動確認で代替</td></tr>
+<tr><td>クラウドソーシングの新着案件自動監視</td><td>規約でスクレイピングが禁止されている可能性が高い。各社の<strong>メール新着通知</strong>で代替し、提案文の下書き生成だけを自動化する（こちらは規約上問題なく、費用対効果が高い）</td></tr>
+<tr><td>Facebookグループでの営業</td><td>40〜60代経営者への到達チャネルとしては有利だが、グループ規約で宣伝・勧誘が禁止されるケースが多く、成果は人的な関係構築に依存して自動化できない。第2フェーズ以降の検討事項とする</td></tr>
+<tr><td>Instagram / Threads の自動DM</td><td>規約違反。Threadsは公式API経由の<strong>投稿のみ</strong>採用</td></tr>
+<tr><td>返信の完全自動送信</td><td>誤爆1通の信用毀損コストが、節約できる数十秒を上回る</td></tr>
+</table>
+
+<h3>13-1. 第2フェーズ以降の検討候補（今回は着手しない）</h3>
+<ul>
+<li><strong>公的支援機関ルート:</strong> よろず支援拠点のコーディネーター（日当27,500円・都道府県ごとに毎年度公募）、商工会議所のエキスパートバンク登録、デジタル化・AI導入補助金のIT導入支援事業者登録（法人単独またはコンソーシアム）。いずれも受動的な案件供給だが、単価と信用力が高い。<strong>公募情報の週次ウォッチは③のエージェントに追加するだけで済む</strong>ため、費用対効果は良好</li>
+<li><strong>Qiita / Zenn への技術記事転載:</strong> 読者はエンジニア中心で直接の発注者ではないが、企業内エンジニア経由の紹介が期待できる。既存GitHubリポジトリ（README・PR差分・Issue）から「課題→設計→実装→学び」の骨子を自動生成できるため、スポークに追加する追加コストは小さい。ただし両サービスとも宣伝目的の投稿は規約で制限されるため、導線はプロフィール欄と記事末尾の固定文言に限定する</li>
+</ul>
+
+<h2 id="s14">14. 調査エビデンス一覧</h2>
+<p>Sonnetエージェント28体が並列で調査した領域と、主な確定事項です。</p>
+<table>
+<tr><th>領域</th><th>主な確定事項</th></tr>
+<tr><td>X / note / YouTube / LinkedIn / Qiita・Zenn / Instagram・Threads / Facebook からの受託獲得事例</td><td><strong>日本語圏で「SNS投稿→AI受託案件」の定量的な一次事例はほぼ公開されていない。</strong> 見つかるのは定性的な体験談か、営業目的の二次情報。この「エビデンスの不在」自体が重要な発見であり、期待値を控えめに置く根拠</td></tr>
+<tr><td>クラウドソーシング相場</td><td>クラウドワークスの手数料は累進（10万円以下は20%）。ランサーズの「業務自動化AIエージェント作成」パッケージは4〜5万円帯。エージェント型（ITプロパートナーズ等）は約9割がエンド直請け</td></tr>
+<tr><td>公的支援ルート</td><td>よろず支援拠点は日当27,500円・都道府県ごとに毎年度公募。IT導入支援事業者は法人要件あり</td></tr>
+<tr><td>コールドDMのベンチマーク</td><td>§8-1の表の通り。すべて出典付き</td></tr>
+<tr><td>法規制・SNS規約</td><td>§10の通り。特定電子メール法のオプトイン例外、各SNSの自動化禁止条項を確認</td></tr>
+<tr><td>見込み客データソース</td><td>法人番号Web-API・gBizINFO・補助金採択一覧が無料で使える。<strong>いずれも問い合わせフォームURLは含まれない</strong>ため、公式サイトの個別確認工程が別途必要</td></tr>
+<tr><td>技術基盤</td><td>GitHub Actionsの60日停止・cron遅延、Notion APIの3req/秒、Discord Webhookのボタン非表示、Postiz/Mixpostのアダプタ設計、プロンプトキャッシュとBatch APIの正確な料金仕様</td></tr>
+<tr><td>既存リポジトリ資産</td><td>§5-4の通り。<code>shared/utils.py</code> は既に <code>cache_prefix</code> 対応済み</td></tr>
+</table>
+
+<hr>
+<p class="src">本ドキュメントは調査結果の統合であり、法務・税務の助言ではありません。数値ベンチマークの多くは英語圏B2Bのデータで、日本語圏での再現性は未検証です。実運用では小規模なテストで実測値を取り、本書の前提を四半期ごとに更新してください。</p>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>README — Project 38: SNS営業支援エージェント 導入手順</title>
+<style>
+:root{--fg:#1a1a1a;--muted:#5b6472;--line:#e2e6ec;--accent:#1f5f8b;--warn:#8b3a1f;--ok:#1f6b45;--soft:#f6f8fa;}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;color:var(--fg);background:#fff;line-height:1.85;font-size:15px}
+.wrap{max-width:900px;margin:0 auto;padding:48px 24px 96px}
+h1{font-size:26px;line-height:1.4;margin:0 0 8px;border-bottom:3px solid var(--accent);padding-bottom:16px}
+h2{font-size:20px;margin:48px 0 14px;padding-left:12px;border-left:5px solid var(--accent)}
+h3{font-size:16px;margin:28px 0 8px;color:var(--accent)}
+.meta{color:var(--muted);font-size:13px;margin-bottom:28px}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:13.5px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600;white-space:nowrap}
+code{background:var(--soft);padding:2px 5px;border-radius:3px;font-size:13px}
+pre{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:14px;overflow-x:auto;font-size:13px;line-height:1.7}
+.box{border:1px solid var(--line);border-radius:8px;padding:16px 20px;margin:20px 0;background:var(--soft)}
+.warn{border-left:5px solid var(--warn);background:#fdf6f3}
+.ok{border-left:5px solid var(--ok);background:#f3faf6}
+.note{border-left:5px solid var(--accent);background:#f3f8fc}
+ul,ol{padding-left:22px} li{margin:5px 0}
+.src{font-size:12px;color:var(--muted)}
+hr{border:0;border-top:1px solid var(--line);margin:40px 0}
+</style>
+</head><body><div class="wrap">
+<h1>README — Project 38: SNS営業支援エージェント</h1>
+<p class="meta">サービス導入手続き ／ 作成日: 2026-09-01<br>
+関連: <a href="SNS営業戦略.html">SNS営業戦略.html</a>（戦略と根拠） ／ <a href="要件定義.html">要件定義.html</a>（仕様） ／ <a href="振り返り.html">振り返り.html</a>（課題と解決）</p>
+
+<div class="box warn">
+<p><strong>現在のステータス: 設計フェーズ完了・実装未着手。</strong> 本ドキュメントは、実装フェーズに進む際の導入手順を先に確定させたものです。手順3以降は実装完了後に実行してください。</p>
+</div>
+
+<h2>1. これは何か</h2>
+<p>SNSと公開情報を使った新規顧客獲得を、<strong>ユーザーの作業を「週2回15分の承認」だけに圧縮して回すための仕組み</strong>です。4体のエージェントが GitHub Actions の定期実行で動き、投稿・DM・返信の下書きを作り、Notionの承認キューに積み、Discordで知らせます。</p>
+<p>SNSプラットフォームの自動DMやブラウザ自動化には一切依存しません（各社の規約違反となるため）。</p>
+
+<h2>2. 導入前に用意するもの</h2>
+<table>
+<tr><th>項目</th><th>費用</th><th>取得先・備考</th></tr>
+<tr><td>Notion アカウントとインテグレーション</td><td>無料</td><td><a href="https://www.notion.so/my-integrations">notion.so/my-integrations</a> でトークンを発行し、対象DBに接続を許可する</td></tr>
+<tr><td>Discord Webhook URL</td><td>無料</td><td>通知したいチャンネルの「連携サービス」→「ウェブフック」から作成</td></tr>
+<tr><td>Anthropic API キー</td><td>従量（月$1〜3見込み）</td><td><a href="https://console.anthropic.com">console.anthropic.com</a></td></tr>
+<tr><td>X Developer アカウント</td><td>従量（月$0.2〜0.5見込み）</td><td><a href="https://developer.x.com">developer.x.com</a>。<strong>2026年2月にFree枠は廃止され従量課金のみ。</strong>支出上限を必ず設定する</td></tr>
+<tr><td>法人番号Web-API アプリケーションID</td><td>無料</td><td><a href="https://www.houjin-bangou.nta.go.jp/webapi/">国税庁</a> で利用規約に同意して発行</td></tr>
+<tr><td>gBizINFO APIトークン</td><td>無料</td><td><a href="https://info.gbiz.go.jp/">gBizINFO</a> でアカウント登録後に発行</td></tr>
+<tr><td>ニュースレター配信基盤</td><td>無料枠</td><td>beehiiv（2,500購読者まで）または Substack（購読者上限なし）。選定は未確定</td></tr>
+</table>
+
+<h2>3. セットアップ手順</h2>
+
+<h3>手順1: リポジトリの準備</h3>
+<pre>git clone https://github.com/akiijauto/portfolio.git
+cd portfolio
+pip install -r requirements.txt</pre>
+<div class="box note">
+<p>GitHub Actions の無料実行枠が無制限になるため、<strong>Publicリポジトリでの運用</strong>を前提としています。Privateの場合は月2,000分の枠を消費します。</p>
+</div>
+
+<h3>手順2: 環境変数の設定</h3>
+<p>ローカル検証用は <code>.env</code>、本番（GitHub Actions）用はリポジトリの Settings → Secrets and variables → Actions に登録します。</p>
+<pre>NOTION_TOKEN=...
+NOTION_DB_POST_CANDIDATES=...   # 投稿候補DB
+NOTION_DB_DELIVERY_QUEUE=...    # 配信キューDB
+NOTION_DB_PROSPECTS=...         # 営業リストDB
+NOTION_DB_REPLY_QUEUE=...       # 返信キューDB
+DISCORD_WEBHOOK_URL=...
+ANTHROPIC_API_KEY=...
+AI_PROVIDER=anthropic
+TWITTER_API_KEY=...
+TWITTER_API_SECRET=...
+TWITTER_ACCESS_TOKEN=...
+TWITTER_ACCESS_TOKEN_SECRET=...
+X_MONTHLY_BUDGET_USD=3          # 支出上限（超過時はエージェントが投稿をスキップし通知のみ行う）
+HOUJIN_BANGOU_APP_ID=...
+GBIZINFO_TOKEN=...</pre>
+<div class="box warn">
+<p><strong>セキュリティ上の遵守事項</strong></p>
+<ul>
+<li><code>.env</code> は <code>.gitignore</code> に含まれていることを必ず確認してからコミットすること</li>
+<li>APIキーをコード・ログ・Notionのページ本文・Discordの通知文に出力しないこと（<code>shared/notify.py</code> はWebhook URLをマスクする実装になっている）</li>
+<li>X APIは従量課金のため、<strong>開発者ポータル側でも支出上限（spend limit）を設定する</strong>こと。環境変数側の上限だけに頼らない</li>
+</ul>
+</div>
+
+<h3>手順3: Notion データベースの作成</h3>
+<p>以下4つのDBを作成し、インテグレーションに接続権限を付与します。各DBの必須プロパティは <a href="要件定義.html">要件定義.html</a> §5-2 を参照してください。</p>
+<ol>
+<li><strong>投稿候補</strong> — ハブ記事の骨子案が溜まる場所</li>
+<li><strong>配信キュー</strong> — 媒体別の投稿下書きが溜まる場所</li>
+<li><strong>営業リスト</strong> — 見込み客とDM文面が溜まる場所</li>
+<li><strong>返信キュー</strong> — 受信メッセージの分類と返信下書きが溜まる場所</li>
+</ol>
+<p>各DBに「ステータス」プロパティ（承認待ち / 承認済み / 却下 / 失効 / 送信済み）と、承認・却下を行うボタンプロパティを設置します。<strong>承認操作はNotion上で行います</strong>（Discordのボタンは通常のWebhookでは表示されないため、Discordは通知とリンクの提示に徹します）。</p>
+
+<h3>手順4: 定期実行の設定</h3>
+<p><code>.github/workflows/</code> に以下を配置します。時刻はUTC基準のため、JSTから9時間を引いた値を指定します。</p>
+<table>
+<tr><th>ワークフロー</th><th>cron（UTC）</th><th>JST</th></tr>
+<tr><td>ネタ収集</td><td><code>17 18 * * 0</code></td><td>月曜 03:17</td></tr>
+<tr><td>配信</td><td><code>17 0 * * 1</code></td><td>月曜 09:17</td></tr>
+<tr><td>見込み客発掘</td><td><code>17 18 * * 2</code></td><td>水曜 03:17</td></tr>
+<tr><td>返信トリアージ</td><td><code>17 23,9 * * *</code></td><td>毎日 08:17 / 18:17</td></tr>
+</table>
+<p>各ワークフローに必ず以下を含めます。</p>
+<pre>on:
+  schedule: [{ cron: '17 18 * * 0' }]
+  workflow_dispatch:          # 手動実行での検証用
+concurrency:
+  group: sns-agent-collect
+  cancel-in-progress: false   # 二重起動の防止</pre>
+<div class="box note">
+<p><strong>なぜ分を <code>:17</code> にずらすのか:</strong> 毎時0分付近はGitHub Actions全体の負荷が高く、scheduleイベントが遅延したりドロップされることがあるためです。</p>
+<p><strong>60日ルール:</strong> リポジトリに60日間活動がないと schedule は自動停止します。本設計では各エージェントが実行結果（配信ログ・スコアリング結果）をリポジトリへコミットするため、この活動が自動的に発生し停止を防ぎます。</p>
+</div>
+
+<h3>手順5: 動作確認</h3>
+<ol>
+<li>各ワークフローを <code>workflow_dispatch</code> から手動実行する</li>
+<li>Notionの各DBに <code>status=承認待ち</code> のレコードが作られることを確認する</li>
+<li>Discordに通知が届き、リンクからNotionページへ遷移できることを確認する</li>
+<li><strong>ブラウザでの実行テスト:</strong> PCとスマートフォンの実ブラウザで承認画面を開き、承認・却下・微修正の3操作が想定どおり動作することを確認する</li>
+<li>同じワークフローを2回連続で実行し、二重登録・二重投稿が起きないことを確認する</li>
+<li>X APIへの実投稿は、最初はテスト用アカウントで1件だけ行い、課金額を開発者ポータルで実測してから本番運用へ切り替える</li>
+</ol>
+
+<h2>4. 日々の使い方</h2>
+<table>
+<tr><th>タイミング</th><th>やること</th><th>所要</th></tr>
+<tr><td>月曜 朝</td><td>Discord通知 → Notion「投稿候補」でハブ記事の骨子3案から1案を承認（必要なら微修正）</td><td>10分</td></tr>
+<tr><td>火曜 朝</td><td>Notion「配信キュー」で媒体別の投稿を一括承認</td><td>3分</td></tr>
+<tr><td>水曜 朝</td><td>Notion「営業リスト」で送信先を選び、文面を承認 → 送信</td><td>15分</td></tr>
+<tr><td>随時</td><td>Discordに「高温度リード」の通知が来たら返信下書きを承認</td><td>1件2分</td></tr>
+</table>
+<p><strong>合計 週30分以内</strong>に収まらない場合は、承認画面の情報設計に問題があるサインです。<a href="振り返り.html">振り返り.html</a> に記録してから改善してください。</p>
+
+<h2>5. 運用上の禁止事項</h2>
+<div class="box warn">
+<ul>
+<li>ブラウザ自動化ツール（Selenium / Playwright）でSNSにログインして投稿・DM・フォローを行わないこと。全媒体で規約違反であり、2026年は警告なしのアカウント停止事例が確認されています</li>
+<li>SNSの自動DM送信機能を追加しないこと</li>
+<li>返信の完全自動送信を有効化しないこと</li>
+<li>クラウドソーシング各社の案件一覧をスクレイピングしないこと（メールの新着通知を使うこと）</li>
+<li>営業メールの送信先を、個人名に紐づくアドレスへ広げないこと。公開されている法人の問い合わせ窓口・公表メールに限定すること</li>
+<li>送信文からオプトアウト（配信停止）の導線と送信者情報を外さないこと</li>
+<li><strong>エージェントによるファイル・データの削除を実装しないこと。</strong> 不要判定は「アーカイブ」ステータスへの変更に留めること</li>
+</ul>
+</div>
+
+<h2>6. トラブルシューティング</h2>
+<table>
+<tr><th>症状</th><th>原因と対処</th></tr>
+<tr><td>定期実行が突然止まった</td><td>60日間リポジトリに活動がなく schedule が無効化された可能性。Actionsタブから手動で再有効化し、コミットが毎回発生しているか確認する</td></tr>
+<tr><td>投稿が二重に行われた</td><td><code>concurrency</code> 設定の欠落。前回ジョブの遅延と重なった可能性。<code>cancel-in-progress: false</code> とグループ名を確認する</td></tr>
+<tr><td>Notion APIが429を返す</td><td>レート制限（平均3req/秒・15分あたり2,700コール）。ページング処理に待機を挟み、<code>last_edited_time</code> による差分検知で取得件数を減らす</td></tr>
+<tr><td>Discordのボタンが表示されない</td><td>仕様です。通常のIncoming Webhookではコンポーネントが表示されません。リンク型（URLへ遷移するだけ）のボタンのみ使用してください</td></tr>
+<tr><td>X APIの請求が想定より多い</td><td>本文にリンクを含む投稿は $0.20/件（通常の13倍）です。リンクは返信欄に置く運用に戻してください。読み取り系エンドポイントを使っていないかも確認</td></tr>
+<tr><td>Claude APIのキャッシュが効かない</td><td><code>response.usage.cache_read_input_tokens</code> が0のままなら、プロンプトの先頭付近にタイムスタンプ等の可変値が混入している可能性。順序は <code>tools → system → messages</code> で固定し、可変情報は最後尾へ。最小トークン数（Haiku 4.5は4,096）未満だとエラーも出ずキャッシュされません</td></tr>
+<tr><td>DM文面に事実誤認が混じる</td><td>品質ゲートの「出典URL紐付けなしは破棄」が機能しているか確認。個別化する範囲を冒頭1〜2文に絞り、全文生成に戻していないか確認</td></tr>
+</table>
+
+<h2>7. 参考</h2>
+<ul>
+<li><a href="SNS営業戦略.html">SNS営業戦略.html</a> — 戦略の全体像、調査エビデンス、コスト試算、90日ロードマップ</li>
+<li><a href="要件定義.html">要件定義.html</a> — 機能要件・非機能要件・データ設計・受入テスト</li>
+<li><a href="振り返り.html">振り返り.html</a> — 設計段階で見つかった課題と解決策</li>
+</ul>
+</div></body></html>

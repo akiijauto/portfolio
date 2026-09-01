@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>振り返り — Project 38: SNS営業支援エージェント</title>
+<style>
+:root{--fg:#1a1a1a;--muted:#5b6472;--line:#e2e6ec;--accent:#1f5f8b;--warn:#8b3a1f;--ok:#1f6b45;--soft:#f6f8fa;}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;color:var(--fg);background:#fff;line-height:1.85;font-size:15px}
+.wrap{max-width:900px;margin:0 auto;padding:48px 24px 96px}
+h1{font-size:26px;line-height:1.4;margin:0 0 8px;border-bottom:3px solid var(--accent);padding-bottom:16px}
+h2{font-size:20px;margin:48px 0 14px;padding-left:12px;border-left:5px solid var(--accent)}
+h3{font-size:16px;margin:30px 0 8px;color:var(--accent)}
+.meta{color:var(--muted);font-size:13px;margin-bottom:28px}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:13.5px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600;white-space:nowrap}
+code{background:var(--soft);padding:2px 5px;border-radius:3px;font-size:13px}
+pre{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:14px;overflow-x:auto;font-size:13px;line-height:1.7}
+.box{border:1px solid var(--line);border-radius:8px;padding:16px 20px;margin:20px 0;background:var(--soft)}
+.warn{border-left:5px solid var(--warn);background:#fdf6f3}
+.ok{border-left:5px solid var(--ok);background:#f3faf6}
+.note{border-left:5px solid var(--accent);background:#f3f8fc}
+.card{border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:8px;padding:4px 20px 16px;margin:24px 0}
+.card h3{margin-top:18px}
+.lbl{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:#e8eef4;color:var(--accent);margin-right:6px;vertical-align:middle}
+ul,ol{padding-left:22px} li{margin:5px 0}
+.src{font-size:12px;color:var(--muted)}
+hr{border:0;border-top:1px solid var(--line);margin:40px 0}
+</style>
+</head><body><div class="wrap">
+<h1>振り返り — Project 38: SNS営業支援エージェント（設計フェーズ）</h1>
+<p class="meta">作成日: 2026-09-01 ／ フェーズ: 戦略立案・設計<br>
+この文書は「何が起きて、なぜ困り、どう解決したか」を、次に同種の設計をするときに読み返せる形で残すものです。</p>
+
+<div class="box note">
+<p><strong>このフェーズでやったこと:</strong> Sonnetエージェント28体で並列Web調査を行い、Opusが統合してSNS営業戦略と運用設計をまとめた。実装はまだ行っていない。</p>
+</div>
+
+<h2>設計中に見つかった課題と、その解決</h2>
+
+<div class="card">
+<span class="lbl">課題 1</span><span class="lbl">前提の崩壊</span>
+<h3>「X APIのFree枠で運用する」という前提が、そもそも成立しなかった</h3>
+<p><strong>何が起きたか:</strong> 当初「Free枠（月1,500投稿相当）だけで投稿を自動化する」方針で設計を始めた。ところが調査の結果、X APIは2026年2月6日にティア制を廃止して従量課金へ完全移行しており、Freeプランの新規登録は終了、既存のBasic契約も6月に従量課金へ自動移行済みだった。</p>
+<p><strong>なぜ困ったか:</strong> 「無料枠の範囲で回す」という制約を土台に投稿頻度やメディア構成を組んでいたため、土台ごと作り直しになりかねなかった。</p>
+<p><strong>どう解決したか:</strong> 従量課金の単価を調べ直したところ、投稿1件 $0.015、URL付き投稿は $0.20 だった。週3投稿なら月 $0.18 で、無料枠がなくても実質的な負担はほぼゼロだと分かった。そこで「無料枠の中でやる」ではなく<strong>「月額上限 $3 を決めて、その中でやる」</strong>という制約に置き換えた。</p>
+<p><strong>学び:</strong> 外部サービスの料金体系は、記憶や過去の知識ではなく<strong>毎回公式ドキュメントで参照日つきで確認する</strong>。特にX APIは2023年以降、料金改定を繰り返している。「無料枠がある」という前提で設計を進めると、崩れたときに構造ごとやり直しになる。最初から「上限額を決める」形の制約にしておけば、料金体系が変わっても設計は生き残る。</p>
+</div>
+
+<div class="card">
+<span class="lbl">課題 2</span><span class="lbl">思わぬ好都合</span>
+<h3>コスト最適化と、リーチ最適化が、たまたま同じ方向を向いていた</h3>
+<p><strong>何が起きたか:</strong> URL付き投稿はAPI単価が13倍（$0.015 → $0.20）と分かり、コストを抑えるならリンクを本文に入れたくない。一方で別の調査から、X は本文内リンク付き投稿の初速リーチを30〜50%落とすため、<strong>リンクは返信欄に置くのがそもそも定石</strong>だと判明した。</p>
+<p><strong>どう解決したか:</strong> 「リンクは本文に入れず返信欄に置く」という1つのルールで、コストとリーチの両方が最適になる。迷う余地がなくなった。</p>
+<p><strong>学び:</strong> 制約（お金）と目的（リーチ）が衝突すると思い込んで妥協案を探し始める前に、<strong>両方の理由を並べてみる</strong>と、同じ結論に収束していることがある。調査を分担して並列で走らせたからこそ、無関係に見えた2つの発見が突き合わせられた。</p>
+</div>
+
+<div class="card">
+<span class="lbl">課題 3</span><span class="lbl">アーキテクチャ</span>
+<h3>「承認ボタンを押すだけ」を実現しようとすると、常駐サーバが必要になってしまう</h3>
+<p><strong>何が起きたか:</strong> 「ユーザーは判断のみ」を実現するには、Discordの通知にそのまま承認ボタンを付けるのが最も手数が少ない。ところが調べると、(1) 通常のIncoming Webhookで送ったボタンは<strong>エラーも出ないまま表示されない</strong>、(2) ボタンのクリックを受け取るには公開HTTPSのエンドポイントが要る、という二重の壁があった。常駐サーバを持つとVPS費用と運用負荷が発生し、「負担を減らす」という目的と矛盾する。</p>
+<p><strong>どう解決したか:</strong> 役割を分けた。<strong>Discordは「通知＋リンクを1タップで開く」までに徹し、実際の承認操作はNotionページ上のボタンプロパティで行う。</strong> エージェントは次回のcron実行時にステータスの変化を検知して後続処理を走らせる。これで常駐サーバがゼロのまま、ユーザーの操作は「通知をタップ → ボタンを押す」の2アクションに収まった。</p>
+<p><strong>学び:</strong> 「即時に反応する」ことと「常駐しない」ことはトレードオフに見えるが、<strong>通知の即時性と処理の即時性を分ければ両立する</strong>。人間が判断するまでの時間の方が、cronの待ち時間よりずっと長い。エラーも出ずに機能が無効化される仕様（Discordのボタン、Claudeのプロンプトキャッシュの最小トークン数）は特に危険で、実装前に必ず確認しておく価値がある。</p>
+</div>
+
+<div class="card">
+<span class="lbl">課題 4</span><span class="lbl">エビデンス</span>
+<h3>「日本の個人開発者がSNS発信で受託案件を獲得した」定量的な一次事例が、ほとんど存在しなかった</h3>
+<p><strong>何が起きたか:</strong> X・note・YouTube・Qiita/Zenn・Instagram/Threads・Facebookと、6つの媒体それぞれに調査を割り当てたが、<strong>どの媒体でも「投稿→受注」を数字で裏付ける一次情報は見つからなかった。</strong> 出てくるのは定性的な体験談か、営業目的で書かれた二次情報ばかりだった。</p>
+<p><strong>なぜ困ったか:</strong> 「この媒体をやれば何件取れる」という見積もりの根拠が作れない。当てずっぽうの数字を書けば、それを信じて時間を投じることになる。</p>
+<p><strong>どう解決したか:</strong> エビデンスがないこと自体を発見として扱い、戦略書に明記した。そのうえで、<strong>期待値を控えめに置き（90日で商談1〜3件・受注0〜1件）、「成果が出る前にやめること」を最大のリスクとして扱う設計</strong>に切り替えた。だからこそ運用負荷を週30分に抑えることが、戦略の飾りではなく本体になった。</p>
+<p><strong>学び:</strong> 調査で「見つからなかった」ことを、探し方が悪かったせいにして無理に何かを書かない。<strong>「エビデンスがない」は立派な調査結果</strong>であり、それを前提にすると戦略の重心が「成果の最大化」から「継続可能性の確保」へ正しく移る。なお、成功者が事例を公開しないだけの可能性もあるので、「効果がない」と断定はしていない。</p>
+</div>
+
+<div class="card">
+<span class="lbl">課題 5</span><span class="lbl">法令・規約</span>
+<h3>「DMを自動送信する」という当初のイメージが、ほぼ全面的に規約違反だった</h3>
+<p><strong>何が起きたか:</strong> 見込み客へのDM送信を自動化したかったが、調査するとX・Instagram・LinkedIn・Facebookのすべてで、同意なき自動DM送信と自動化ツールの使用が明確に禁止されていた。LinkedInは2026年に検知が厳格化し、警告なしの即時停止事例が確認されている。日本の特定電子メール法も、原則としてオプトインを求めている。</p>
+<p><strong>どう解決したか:</strong> 自動化の境界を引き直した。</p>
+<ul>
+<li><strong>送信先を変えた:</strong> SNSのDMではなく、企業が<strong>サイトに公開している問い合わせ窓口・公表メールアドレス</strong>へ送る。特定電子メール法には「自己の電子メールアドレスを公表している団体・営業を営む個人」はオプトイン規制の対象外という例外があり、ここに乗る。オプトアウト導線と送信者情報は必ず明記する</li>
+<li><strong>自動化の範囲を変えた:</strong> リスト生成・スコアリング・文面生成までを自動化し、<strong>送信は人間が行う</strong>。SNSのDMを使う場合も下書きまで</li>
+<li><strong>リスト作成元を変えた:</strong> SNSのスクレイピングをやめ、法人番号Web-API・gBizINFO・補助金採択事業者一覧という<strong>公開・無料・規約上クリーンな公的データ</strong>に切り替えた</li>
+</ul>
+<p><strong>学び:</strong> 「やりたいこと」を規約が禁じているとき、諦めるか強行するかの二択ではない。<strong>「送信先」「自動化の範囲」「データの出どころ」のどれかを変えれば、目的は保ったまま合法な経路が見つかることが多い。</strong> むしろ公的データに切り替えたことで、補助金の採択歴という「予算と投資意欲が実証済み」の強力なスコアリング特徴量が手に入り、リストの質はSNSから拾うより上がった。制約が設計を良くした例。</p>
+</div>
+
+<div class="card">
+<span class="lbl">課題 6</span><span class="lbl">スコープ管理</span>
+<h3>「露出メディアは増やしてよい」を素直に受けると、運用負荷が青天井になる</h3>
+<p><strong>何が起きたか:</strong> 媒体を増やすほど接点は増えるが、そのまま作ると「媒体数 × 承認回数」で作業が増える。同一文の使い回しはアルゴリズムに抑制されるため、コピペで済ませることもできない。</p>
+<p><strong>どう解決したか:</strong> 承認の単位を投稿ではなく<strong>ハブ記事1本</strong>に固定した。人間が中身を判断するのは週1回のハブ記事だけで、そこから生成される媒体別の投稿は「リスク低」として一括承認の対象にする。媒体が1つ増えても、増えるのは一括承認の画面に並ぶカードが1枚だけ。</p>
+<p>実装面では Postiz と Mixpost の設計を参照し、<strong>媒体差分をコードのif分岐ではなく <code>capabilities</code> という設定データに寄せた</strong>。「新規媒体の追加がアダプタ1クラス＋設定追加で完結しない場合は設計違反として差し戻す」を受入基準（NFR-2）に明記した。</p>
+<p><strong>学び:</strong> 「負荷を逓増させない」は心がけではなく<strong>受入基準として書けなければ守れない</strong>。判断の単位を作業の単位から切り離す（＝1回の判断が複数の作業を確定させる）のが、人間の負荷を一定に保つ一般解になりそう。</p>
+</div>
+
+<div class="card">
+<span class="lbl">課題 7</span><span class="lbl">品質</span>
+<h3>LLMに営業文を全文生成させると、コピペ感と事実誤認の両方を招く</h3>
+<p><strong>何が起きたか:</strong> パーソナライズすると返信率が約2倍という数字がある一方、テンプレートに名前を差し込むだけでは効果が薄い。かといって全文をLLMに書かせると、存在しない実績や誇張表現が混ざるリスクが上がる。</p>
+<p><strong>どう解決したか:</strong> <strong>可変域を「冒頭の1〜2文」だけに絞った。</strong> 手順は、①公開情報から出典URL付きのファクトシートを構造化データとして抽出 → ②そこから個別化に使える一文の候補を生成（出典が紐付かない候補は破棄）→ ③定型テンプレートに1文だけ差し込む。加えて品質ゲート（出典なし・数値不一致・禁止語・過去文面との類似度超過を自動で弾く）を通す。判定の一次はルールベース＋Haikuの二段で、最終承認は必ず人間。</p>
+<p><strong>学び:</strong> 生成AIの品質は、モデルやプロンプトの巧拙より<strong>「生成させる範囲をどれだけ狭くできるか」</strong>で決まる部分が大きい。出力トークンが減るのでコストも下がり、レビューも速くなる。ハルシネーション対策として最も効いたのは「出典URLが紐付かない生成物は無条件で破棄する」という単純な機械的ルールだった。</p>
+</div>
+
+<div class="card">
+<span class="lbl">課題 8</span><span class="lbl">プロセス</span>
+<h3>28体の並列エージェントは、そのままでは「重複した一般論」を大量に返してくる</h3>
+<p><strong>何が起きたか:</strong> 100体並列という当初の希望に対し、トークンコストとの兼ね合いで30体規模に調整した。それでも調査軸の切り方が甘いと、複数のエージェントが同じ一般論を返して統合の手間だけが増える。</p>
+<p><strong>どう解決したか:</strong> 各エージェントへの指示に4つの制約を入れた。①出力を500〜700語に制限、②【事実と出典URL】【示唆】【実装への落とし込み】という構造を固定、③検索回数の上限を明示、④<strong>「不確かな内容は推測と明記」を必須にした</strong>。特に④が効いた。推測と事実が分離されて返ってくるので、統合時に「これは根拠がある」「これは推測だ」を判断するコストがほぼゼロになり、戦略書にもその区別をそのまま持ち込めた。</p>
+<p><strong>学び:</strong> 並列調査の価値は「量」ではなく<strong>「軸の重ならなさ」</strong>で決まる。同じ問いを100人に聞いても同じ答えが100回返るだけ。そして<strong>出力フォーマットを固定することが、統合コストを下げる最大の投資</strong>だった。次回も同じ4制約を使う。</p>
+</div>
+
+<h2>次フェーズ（実装）に持ち越す注意点</h2>
+<table>
+<tr><th>#</th><th>注意点</th><th>理由</th></tr>
+<tr><td>1</td><td>プロンプトキャッシュは <code>tools → system → messages</code> の順序を厳守し、可変値（日時・対象企業名）を必ず最後尾に置く</td><td>途中の1バイトの変更で以降のキャッシュが全て無効化される。しかも<strong>エラーは出ない</strong>。<code>usage.cache_read_input_tokens</code> を必ずログに出して監視する</td></tr>
+<tr><td>2</td><td>Haiku 4.5 の最小キャッシュ長は4,096トークン</td><td>Sonnet（1,024）やOpus 5（512）の感覚で組むと、Haikuだけ黙ってキャッシュが効かない</td></tr>
+<tr><td>3</td><td>Batch APIは最大24時間で失効する（失効分は課金されない）</td><td>週次バッチなら問題ないが、日次の返信トリアージには使わない</td></tr>
+<tr><td>4</td><td>スケジューラはAPSchedulerではなくGitHub Actionsに寄せる</td><td>モジュールレベルでAPSchedulerを起動するプロジェクトを <code>hub_app.py</code> に登録すると多重起動する（既知の問題）。Actions側に寄せれば常駐プロセスもVPS費用も不要になる</td></tr>
+<tr><td>5</td><td>成果物を毎回リポジトリにコミットする設計にする</td><td>60日間活動がないとGitHub Actionsのscheduleが自動停止する。ログのコミットがそのまま停止防止になる</td></tr>
+<tr><td>6</td><td>X APIの支出上限は開発者ポータル側にも設定する</td><td>環境変数側のガードだけではバグで突破されうる。従量課金は上限を外部にも置く</td></tr>
+<tr><td>7</td><td>承認1件あたりの判断時間を実測する</td><td>NFR-1（週30分以内）を満たせないなら、それは意志の問題ではなく承認画面の情報設計の問題。Notion運用から自前UIへの移行を判断する材料にする</td></tr>
+</table>
+
+<h2>このフェーズの総括</h2>
+<div class="box ok">
+<p>最も価値があった判断は、<strong>「無料枠でやる」を「上限額を決めてやる」に置き換えたこと</strong>と、<strong>「DMを自動送信する」を「送信先とデータの出どころを変える」に置き換えたこと</strong>の2つ。どちらも、当初の前提が使えないと分かったときに、目的（低コストで見込み客に届く）を保ったまま手段を差し替えている。</p>
+<p>逆に最も危なかったのは、日本語圏の成功事例が見つからないまま「たぶん効くだろう」で数字を書きそうになったこと。エビデンスの不在を正直に書いたことで、戦略の重心が「成果の最大化」から「続けられること」へ移り、結果として週30分という設計制約が生まれた。</p>
+</div>
+</div></body></html>

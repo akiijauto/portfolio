@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>要件定義 — Project 38: SNS営業支援エージェント</title>
+<style>
+:root{--fg:#1a1a1a;--muted:#5b6472;--line:#e2e6ec;--accent:#1f5f8b;--warn:#8b3a1f;--ok:#1f6b45;--soft:#f6f8fa;}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;color:var(--fg);background:#fff;line-height:1.85;font-size:15px}
+.wrap{max-width:900px;margin:0 auto;padding:48px 24px 96px}
+h1{font-size:26px;line-height:1.4;margin:0 0 8px;border-bottom:3px solid var(--accent);padding-bottom:16px}
+h2{font-size:20px;margin:48px 0 14px;padding-left:12px;border-left:5px solid var(--accent)}
+h3{font-size:16px;margin:28px 0 8px;color:var(--accent)}
+.meta{color:var(--muted);font-size:13px;margin-bottom:28px}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:13.5px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600;white-space:nowrap}
+code{background:var(--soft);padding:2px 5px;border-radius:3px;font-size:13px}
+pre{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:14px;overflow-x:auto;font-size:13px;line-height:1.7}
+.box{border:1px solid var(--line);border-radius:8px;padding:16px 20px;margin:20px 0;background:var(--soft)}
+.warn{border-left:5px solid var(--warn);background:#fdf6f3}
+.ok{border-left:5px solid var(--ok);background:#f3faf6}
+.note{border-left:5px solid var(--accent);background:#f3f8fc}
+ul,ol{padding-left:22px} li{margin:5px 0}
+.src{font-size:12px;color:var(--muted)}
+hr{border:0;border-top:1px solid var(--line);margin:40px 0}
+</style>
+</head><body><div class="wrap">
+<h1>要件定義 — Project 38: SNS営業支援エージェント</h1>
+<p class="meta">作成日: 2026-09-01 ／ ステータス: 設計フェーズ（実装は次フェーズ）<br>
+戦略の全体像と根拠は <a href="SNS営業戦略.html">SNS営業戦略.html</a> を参照。</p>
+
+<h2>1. 背景と目的</h2>
+<p>Flask製の業務自動化Webアプリ35本（<a href="https://ai-l-a-b-o.com">ai-l-a-b-o.com</a>）という既存資産を活かし、中小企業・店舗からの受託案件および月額保守契約を継続的に獲得する。</p>
+<p>ただし、営業活動そのものが定型作業の反復でユーザーの時間を奪っては本末転倒となる。したがって本プロジェクトの最上位の要件は<strong>「ユーザーの作業を判断のみに限定し、その負担が露出メディア数に比例して増えないこと」</strong>である。</p>
+
+<h2>2. スコープ</h2>
+<h3>2-1. 対象に含むもの</h3>
+<ul>
+<li>定期的な外部発信（ハブ記事1本から複数メディアへの自動展開）</li>
+<li>見込み客の発掘（公開情報からのリスト生成とスコアリング）</li>
+<li>DM／問い合わせフォーム向け送信文の自動生成</li>
+<li>受信メッセージの自動分類と返信下書きの生成</li>
+<li>上記すべてを束ねる承認キューと通知</li>
+</ul>
+<h3>2-2. 対象に含まないもの</h3>
+<ul>
+<li>SNSへの自動DM送信、自動フォロー、自動いいね（各社規約違反のため）</li>
+<li>ブラウザ自動化による投稿・データ取得（同上）</li>
+<li>返信メッセージの完全自動送信（人間の承認を必須とする）</li>
+<li>動画メディア（YouTube／ショート）の運用</li>
+<li>LinkedInの本格運用</li>
+</ul>
+
+<h2>3. 機能要件</h2>
+
+<h3>FR-1: ネタ収集エージェント（週次）</h3>
+<ul>
+<li>git log（<code>--since</code> で前週分）、GitHub Releases、Notionの開発記録を取得する</li>
+<li>コミットを Conventional Commits 形式で分類し、「詰まり→解決」のペア、リリース、数値変化を検出する</li>
+<li>検出内容を「Before/After型」「進捗報告型」「数字公開型」に分類し、ハブ記事の骨子を3案生成する</li>
+<li>結果を Notion「投稿候補」DB へ <code>status=承認待ち</code> で登録し、Discord へ通知する</li>
+</ul>
+
+<h3>FR-2: 配信エージェント（週次）</h3>
+<ul>
+<li>承認済みのハブ記事を取得し、<code>capabilities</code> 設定に従って媒体別の投稿を生成する</li>
+<li>対応媒体: X（100字未満・本文リンクなし）、note（全文転載＋rel=canonical）、Threads（200字未満）、ニュースレター（3行サマリ＋CTA）</li>
+<li>生成物を Notion「配信キュー」DB へ <code>status=承認待ち</code>（リスクタグ=低）で登録する</li>
+<li>次回実行時に <code>status=承認済み</code> を検知し、X APIでの投稿・note下書き作成・ニュースレター下書き作成を実行する</li>
+<li>配信結果は post × integration の粒度で記録し、1媒体の失敗が他媒体を巻き込まないこと</li>
+</ul>
+
+<h3>FR-3: 見込み客発掘エージェント（週次）</h3>
+<ul>
+<li>国税庁 法人番号Web-API、gBizINFO API、デジタル化・AI導入補助金の交付決定事業者一覧から候補企業を取得する</li>
+<li>特徴量（補助金採択歴・従業員数・業種・設立年数・所在地）でスコアリングし、上位20社に絞る</li>
+<li>各社の公開情報からファクトシートを構造化抽出し、出典URLを必ず紐付ける</li>
+<li>定型テンプレートに「個別化された冒頭1〜2文」のみを差し込む形で送信文を生成する</li>
+<li>結果を Notion「営業リスト」DB へ <code>status=承認待ち</code>（リスクタグ=高）で登録する</li>
+</ul>
+
+<h3>FR-4: 返信トリアージエージェント（日次×2）</h3>
+<ul>
+<li>受信箱・問い合わせフォームの新着を取得する</li>
+<li><code>interested / needs_conditions / not_now / follow_up_later / spam</code> の5分類と <code>confidence</code>、判断根拠 <code>key_signals</code>、返信下書きを生成する</li>
+<li><code>confidence &lt; 0.85</code>、または <code>interested</code> / <code>needs_conditions</code> の場合は <code>requires_human_review=true</code> を強制する</li>
+<li><code>spam</code> の自動アーカイブは <code>confidence &gt; 0.95</code> の場合のみ許可する</li>
+<li><code>interested</code> は Discord へ即時通知する（返信速度が成約率に直結するため）</li>
+</ul>
+
+<h3>FR-5: 承認キュー</h3>
+<ul>
+<li>1件の表示要素: 提案内容（最上部）、リスクタグ、影響範囲（送信先・公開日時・媒体）、経過時間と失効期限、根拠（折りたたみ）</li>
+<li>操作は <strong>承認 / 却下 / 微修正</strong> の3択のみ。微修正は本文が事前入力された状態で開き、編集後も1ボタンで確定する</li>
+<li>一括承認はリスクタグ=低の項目に限定し、対象件数と最大影響を確認モーダルに表示する</li>
+<li>72時間で自動失効する</li>
+<li>却下・微修正の履歴を記録し、後続のスコアリング閾値調整に用いる</li>
+</ul>
+
+<h3>FR-6: 品質ゲート（送信前の自動チェック）</h3>
+<p>以下のいずれかに該当する生成物は承認キューに載せず破棄またはフラグ付けする。</p>
+<ul>
+<li>出典URLが紐付いていない個別化文</li>
+<li>数値・固有名詞がファクトシートと完全一致しない</li>
+<li>禁止語リストへのヒット（「業界No.1」「必ず」「絶対」「〜だけで解決」等）</li>
+<li>競合の誹謗・比較優良表示</li>
+<li>同一企業への過去送信文との類似度が閾値超</li>
+<li>文字数がレンジ外、または配信停止導線の欠落</li>
+</ul>
+
+<h2>4. 非機能要件</h2>
+<table>
+<tr><th>ID</th><th>要件</th><th>受入基準</th></tr>
+<tr><td>NFR-1</td><td>ユーザーの作業時間</td><td>承認業務の合計が<strong>週30分以内</strong>。1件あたり低リスク5〜15秒、要文脈確認30〜60秒</td></tr>
+<tr><td>NFR-2</td><td>メディア追加コストの非逓増</td><td>新規媒体の追加が <strong>アダプタ1クラス ＋ capabilities設定の追加のみ</strong>で完結すること。コアやスケジューラの改修を要する場合は設計違反として差し戻す</td></tr>
+<tr><td>NFR-3</td><td>ランニングコスト</td><td>月額600円以内（Claude API・X API・その他すべて込み）</td></tr>
+<tr><td>NFR-4</td><td>常駐サーバ不要</td><td>GitHub Actions の cron のみで承認ループが閉じること。VPS・常駐プロセスを前提としない</td></tr>
+<tr><td>NFR-5</td><td>規約遵守</td><td>SNSの自動DM・自動フォロー・ブラウザ自動化・スクレイピングを一切実装しない</td></tr>
+<tr><td>NFR-6</td><td>法令遵守</td><td>送信先は公開されている法人の問い合わせ窓口／公表メールに限定。全送信文にオプトアウト導線と送信者情報を明記</td></tr>
+<tr><td>NFR-7</td><td>LLMコスト効率</td><td>プロンプトキャッシュ（<code>tools→system→messages</code> の順序遵守）、Batch API（レイテンシ不要処理）、モデル階層化（分類=Haiku／生成=Sonnet）を実装すること</td></tr>
+<tr><td>NFR-8</td><td>削除の禁止</td><td>エージェントは既存ファイル・データを削除しない。不要判定は「アーカイブ」ステータスへの変更に留める</td></tr>
+</table>
+
+<h2>5. データ設計</h2>
+<h3>5-1. 中間フォーマット（正規化ポスト）</h3>
+<pre>Post {
+  id, source_hub_id
+  body: { text, mentions[], hashtags[] }
+  media: [{ type, path, alt_text }]
+  link: { url, utm }
+  targets: [{ platform, overrides? }]
+  status: draft | pending_approval | queued | published | partial_failed
+}
+IntegrationConfig {
+  platform, credentials_ref
+  capabilities: { max_text_len, allow_inline_link, media_types[], supports_thread }
+}
+DeliveryAttempt { post_id, platform, status, external_post_id?, error_code?, retry_count, next_retry_at }</pre>
+
+<h3>5-2. Notion データベース構成</h3>
+<table>
+<tr><th>DB名</th><th>主なプロパティ</th><th>ステータス遷移</th></tr>
+<tr><td>投稿候補</td><td>骨子・ネタ種別・ソース(commit/Notion)・リスクタグ</td><td>承認待ち → 承認済み / 却下 / 失効</td></tr>
+<tr><td>配信キュー</td><td>媒体・本文・公開予定日時・UTM・配信結果</td><td>承認待ち → 承認済み → 配信済み / 失敗</td></tr>
+<tr><td>営業リスト</td><td>法人番号・商号・スコア・ファクトシート・送信文・出典URL</td><td>承認待ち → 送信済み → 返信あり / 打ち切り</td></tr>
+<tr><td>返信キュー</td><td>分類・confidence・key_signals・返信下書き</td><td>承認待ち → 送信済み / 却下</td></tr>
+</table>
+
+<h2>6. 外部依存とレート制限</h2>
+<table>
+<tr><th>依存先</th><th>制限</th><th>対策</th></tr>
+<tr><td>X API（従量課金）</td><td>投稿 $0.015/件、URL付き $0.20/件</td><td>月額上限 $3 を設定。本文にリンクを入れない。読み取り系は一切使わない</td></tr>
+<tr><td>Notion API</td><td>平均3req/秒、15分あたり2,700コール</td><td>ページングと待機を挟む。<code>last_edited_time</code> による差分検知</td></tr>
+<tr><td>Discord Webhook</td><td>コンポーネント（ボタン）は表示されない</td><td>通知＋リンク型ボタンのみに限定。承認操作はNotion側で行う</td></tr>
+<tr><td>GitHub Actions</td><td>60日非活動でcron停止、毎時0分付近は遅延</td><td>実行結果を毎回リポジトリへコミット。cron式の分を <code>:17</code> にずらす。<code>concurrency</code> で二重起動を防止</td></tr>
+<tr><td>法人番号API / gBizINFO</td><td>アプリケーションID・トークンが必要</td><td>Secrets管理。連続アクセスの頻度を抑制</td></tr>
+</table>
+
+<h2>7. 既存資産の再利用</h2>
+<table>
+<tr><th>既存</th><th>再利用内容</th></tr>
+<tr><td><code>shared/utils.py</code></td><td><code>call_claude_json / call_claude_text</code>（<code>cache_prefix</code> 引数によりプロンプトキャッシュ対応済み）、<code>extract_json</code>、<code>handle_ai_error</code></td></tr>
+<tr><td><code>shared/notify.py</code></td><td><code>notify_admin()</code>（障害通知。Webhook URLマスク・429判別済み）</td></tr>
+<tr><td><code>projects/15_sns_management_hub/</code></td><td>投稿生成・Notion連携・<code>notifier.py:send_discord()</code>（embed形式）</td></tr>
+<tr><td><code>projects/29_form_notion_bot/</code></td><td>入力→AI分類→Notion保存→通知の一気通貫パターン（FR-4の母体）</td></tr>
+<tr><td><code>projects/17_inquiry_crm/</code></td><td>SQLAlchemyの <code>Inquiry</code> モデル（営業リード管理の雛形）</td></tr>
+</table>
+
+<h2>8. 実装方針の決定事項</h2>
+<div class="box note">
+<ul>
+<li><strong>スケジューラはAPScheduler ではなく GitHub Actions に寄せる。</strong> 常駐プロセスが不要になり、<code>hub_app.py</code> の多重起動問題も回避できる。VPS費用もゼロ</li>
+<li>Publicリポジトリで運用する（Actions無料枠が無制限のため）。秘匿情報はすべて Secrets に置き、コードにも成果物にも残さない</li>
+<li>DBは Notion を正とし、ローカルSQLiteはキャッシュ・冪等性確保のためだけに用いる</li>
+</ul>
+</div>
+
+<h2>9. 受入テスト</h2>
+<table>
+<tr><th>#</th><th>観点</th><th>方法</th></tr>
+<tr><td>T-1</td><td>機能テスト</td><td>各エージェントを <code>workflow_dispatch</code> で手動起動し、Notionの各DBに想定どおりのレコードが作られること。品質ゲートが禁止語・出典なし文面を確実に弾くこと（意図的に不正な生成物を注入して確認）</td></tr>
+<tr><td>T-2</td><td>ブラウザ実行テスト</td><td>承認画面（Notionページおよび自前UIを用意する場合はそのUI）を実ブラウザで開き、承認／却下／微修正の3操作とモバイル表示を確認する</td></tr>
+<tr><td>T-3</td><td>冪等性</td><td>同一cronを2回連続実行し、二重投稿・二重登録が起きないこと</td></tr>
+<tr><td>T-4</td><td>部分失敗</td><td>1媒体の認証を意図的に失効させ、他媒体の配信が成功すること・<code>partial_failed</code> が記録されることを確認</td></tr>
+<tr><td>T-5</td><td>コスト</td><td>1ヶ月の実運用後、API利用額が NFR-3 の範囲内に収まっていることを実測</td></tr>
+<tr><td>T-6</td><td>作業時間</td><td>4週間の運用で、週あたりの承認作業時間が30分以内に収まっていることを実測</td></tr>
+</table>
+
+<h2>10. 未確定事項</h2>
+<ul>
+<li>ニュースレター配信基盤の選定（beehiiv 2,500購読者まで無料 / Substack 購読者上限なし / Brevo 1日300通）。日本語での実用性は実配信テストで確認が必要</li>
+<li>承認UIをNotionのボタンプロパティで完結させるか、既存Flask基盤で専用画面を作るか（Notion先行 → 判断時間がNFR-1を超えるようなら自前UIへ移行）</li>
+<li>日本語圏のコールドメール返信率の実測値（英語圏ベンチマークがそのまま適用できるかは未検証）</li>
+</ul>
+</div></body></html>
