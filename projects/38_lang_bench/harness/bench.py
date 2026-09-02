@@ -4,9 +4,9 @@
 
   isolated   : 1言語ずつ単独で起動して負荷をかける。他コンテナがCPUを奪わないので
                「その言語の素の性能」が出る。言語間比較の主データはこちら。
-  concurrent : 3言語を同時に起動し、共通の開始時刻（スタートバリア）で一斉に
+  concurrent : 全言語を同時に起動し、共通の開始時刻（スタートバリア）で一斉に
                負荷をかける。ホストのCPUを奪い合う状況での劣化の仕方を見る。
-               ユーザ要望の「3つのDockerを同時に動かすタイマー」はここ。
+               「複数のDockerを同時に動かすタイマー」はここ。
 
 concurrent の数値は isolated より必ず悪くなる。両者を並べて初めて
 「この言語は混み合うとどれだけ崩れるか」が読める。
@@ -33,6 +33,11 @@ TARGETS = {
     "py": ("bench-py", 18001, "Python 3.12 / FastAPI+uvicorn"),
     "go": ("bench-go", 18002, "Go 1.22 / net_http"),
     "rb": ("bench-rb", 18003, "Ruby 3.3 / Sinatra+Puma"),
+    "ts": ("bench-ts", 18004, "TypeScript / Node 22 + Fastify"),
+    "java": ("bench-java", 18005, "Java 21 / Spring Boot 3 + 仮想スレッド"),
+    "cs": ("bench-cs", 18006, "C# / .NET 9 Minimal API"),
+    "php": ("bench-php", 18007, "PHP 8.4 / nginx + php-fpm + JIT"),
+    "rs": ("bench-rs", 18008, "Rust / Axum + Tokio"),
 }
 
 K6_IMAGE = "grafana/k6:0.54.0"
@@ -58,7 +63,7 @@ def preflight():
         sys.exit("[FATAL] docker デーモンに接続できない。")
 
 
-def wait_healthy(services, timeout=180):
+def wait_healthy(services, timeout=300):
     """healthz が通るまで待つ。ここを省くと起動直後の遅さを計測してしまう。"""
     deadline = time.time() + timeout
     pending = set(services)
@@ -133,8 +138,8 @@ def run_isolated(out_dir, args):
 
 
 def run_concurrent(out_dir, args):
-    """3言語同時。共通の壁時計時刻を渡して一斉スタートさせる。"""
-    print("\n[concurrent] 3言語同時実行", flush=True)
+    """全言語同時。共通の壁時計時刻を渡して一斉スタートさせる。"""
+    print(f"\n[concurrent] {len(args.langs)}言語同時実行", flush=True)
     compose("down", "--remove-orphans", capture_output=True)
     compose("up", "-d", *args.langs, check=True)
     wait_healthy(args.langs)
@@ -166,14 +171,14 @@ def run_concurrent(out_dir, args):
 def main():
     parser = argparse.ArgumentParser(description="Python/Go/Ruby HTTP APIベンチマーク")
     parser.add_argument("--mode", choices=["isolated", "concurrent", "both"], default="both")
-    parser.add_argument("--langs", nargs="+", default=["py", "go", "rb"], choices=list(TARGETS))
+    parser.add_argument("--langs", nargs="+", default=list(TARGETS), choices=list(TARGETS))
     parser.add_argument("--vus", type=int, default=50, help="定常負荷の同時接続数")
     parser.add_argument("--rounds", type=int, default=200, help="1リクエストあたりのSHA-256反復数（CPU比重）")
     parser.add_argument("--items", type=int, default=12, help="1注文あたりの明細数（JSON/メモリ比重）")
     parser.add_argument("--warmup", default="15s")
     parser.add_argument("--steady", default="60s")
     parser.add_argument("--settle", type=float, default=3.0, help="healthy後に待つ秒数")
-    parser.add_argument("--barrier", type=float, default=8.0, help="同時実行のスタートバリアまでの猶予秒")
+    parser.add_argument("--barrier", type=float, default=15.0, help="同時実行のスタートバリアまでの猶予秒")
     parser.add_argument("--skip-build", action="store_true")
     args = parser.parse_args()
 

@@ -43,6 +43,48 @@ services:
       THREADS: ${BENCH_THREADS:-8}
     ports: ["18003:8000"]
 
+  ts:
+    <<: *limits
+    container_name: bench-ts
+    build: ./services/node
+    environment:
+      PORT: 8000
+      WORKERS: ${BENCH_WORKERS:-2}
+    ports: ["18004:8000"]
+
+  java:
+    <<: *limits
+    container_name: bench-java
+    build: ./services/java
+    environment:
+      PORT: 8000
+    ports: ["18005:8000"]
+
+  cs:
+    <<: *limits
+    container_name: bench-cs
+    build: ./services/csharp
+    environment:
+      PORT: 8000
+    ports: ["18006:8000"]
+
+  php:
+    <<: *limits
+    container_name: bench-php
+    build: ./services/php
+    environment:
+      PHP_FPM_CHILDREN: ${BENCH_PHP_CHILDREN:-8}
+    ports: ["18007:8000"]
+
+  rs:
+    <<: *limits
+    container_name: bench-rs
+    build: ./services/rust
+    environment:
+      PORT: 8000
+      WORKERS: ${BENCH_WORKERS:-2}
+    ports: ["18008:8000"]
+
   # ブラウザ実行テスト用。profiles 指定により通常のベンチ実行では起動しない
   # （負荷計測中にnginxがCPUを分け合うと比較が歪むため）。
   console:

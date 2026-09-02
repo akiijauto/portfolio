@@ -1,4 +1,4 @@
-"""3実装が同一の計算結果を返すことを検証する（CLI版）。
+"""全実装が同一の計算結果を返すことを検証する（CLI版）。
 
 性能比較は「同じ仕事をさせている」ことが前提になる。片方だけ手抜きをしていれば
 速いのは当たり前で、数値に意味がなくなる。bench.py の前に必ずこれを通すこと。
@@ -10,7 +10,16 @@ import sys
 import urllib.error
 import urllib.request
 
-ENDPOINTS = {"py": "http://localhost:18001", "go": "http://localhost:18002", "rb": "http://localhost:18003"}
+ENDPOINTS = {
+    "py": "http://localhost:18001",
+    "go": "http://localhost:18002",
+    "rb": "http://localhost:18003",
+    "ts": "http://localhost:18004",
+    "java": "http://localhost:18005",
+    "cs": "http://localhost:18006",
+    "php": "http://localhost:18007",
+    "rs": "http://localhost:18008",
+}
 
 
 def build_payload(rounds: int, items: int) -> dict:
@@ -48,7 +57,7 @@ def main() -> int:
         try:
             results[lang] = call(base, payload)
         except (urllib.error.URLError, TimeoutError) as exc:
-            print(f"[NG] {lang}: 接続失敗 {exc}")
+            print(f"[NG] {lang}: 接続失敗 {exc}（make up で全サービスを起動しているか確認）")
             return 2
 
     # lang フィールドだけは実装ごとに異なって当然なので比較から外す
@@ -65,9 +74,9 @@ def main() -> int:
     if not ok:
         print("\n--- 全応答 ---")
         print(json.dumps(results, ensure_ascii=False, indent=2))
-        print("\n3実装の計算結果が食い違っている。性能比較の前提が崩れているので先に直すこと。")
+        print("\n実装間で計算結果が食い違っている。性能比較の前提が崩れているので先に直すこと。")
         return 1
-    print("\n3実装のパリティ確認OK。性能比較を実行してよい。")
+    print(f"\n{len(results)}実装のパリティ確認OK。性能比較を実行してよい。")
     return 0
 
 

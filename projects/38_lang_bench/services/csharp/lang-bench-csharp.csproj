@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>lang-bench-csharp</AssemblyName>
+    <RootNamespace>Bench</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- テストプロジェクトが Score.cs を参照するため、HTTP層のみ本体に含める -->
+    <Compile Remove="tests/**" />
+  </ItemGroup>
+
+</Project>

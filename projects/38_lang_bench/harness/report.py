@@ -17,9 +17,15 @@ import pathlib
 import statistics
 import sys
 
-LANG_LABEL = {"py": "Python", "go": "Go", "rb": "Ruby"}
-LANG_COLOR = {"py": "#3572A5", "go": "#00ADD8", "rb": "#CC342D"}
-CONTAINER_LANG = {"bench-py": "py", "bench-go": "go", "bench-rb": "rb"}
+LANG_LABEL = {
+    "py": "Python", "go": "Go", "rb": "Ruby", "ts": "TypeScript",
+    "java": "Java", "cs": "C#", "php": "PHP", "rs": "Rust",
+}
+LANG_COLOR = {
+    "py": "#3572A5", "go": "#00ADD8", "rb": "#CC342D", "ts": "#3178C6",
+    "java": "#E76F00", "cs": "#68217A", "php": "#777BB4", "rs": "#B7410E",
+}
+CONTAINER_LANG = {f"bench-{k}": k for k in LANG_LABEL}
 
 
 def load_k6(path):
@@ -158,7 +164,7 @@ def build(out_dir: pathlib.Path) -> pathlib.Path:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Python / Go / Ruby 性能比較レポート {html.escape(manifest['started_at'])}</title>
+<title>バックエンド言語 性能比較レポート {html.escape(manifest['started_at'])}</title>
 <style>
   :root {{ color-scheme: light dark; --fg:#1a1a1a; --bg:#fff; --line:#d8d8d8; --muted:#666; --panel:#f7f7f8; }}
   @media (prefers-color-scheme: dark) {{
@@ -191,7 +197,7 @@ def build(out_dir: pathlib.Path) -> pathlib.Path:
 </head>
 <body>
 <main>
-  <h1>Python / Go / Ruby 性能比較レポート</h1>
+  <h1>バックエンド言語 性能比較レポート</h1>
   <p class="meta">計測開始 {html.escape(manifest['started_at'])} ／ 終了 {html.escape(manifest.get('finished_at', '-'))}
      ／ ホスト論理CPU {manifest['host']['cpus']}</p>
 
@@ -201,7 +207,7 @@ def build(out_dir: pathlib.Path) -> pathlib.Path:
   {table(iso_rows, iso_res, "isolated — 1言語ずつ単独で起動", "他コンテナがCPUを奪わない条件。言語選定の主データはこちら。")}
 
   <h2>2. 同時実行（リソース競合下の比較）</h2>
-  {table(con_rows, con_res, "concurrent — 3言語を共通タイマーで一斉起動", "3コンテナがホストCPUを奪い合う。単独実行より必ず悪化する。悪化の「幅」が本番同居時のリスク。")}
+  {table(con_rows, con_res, "concurrent — 全言語を共通タイマーで一斉起動", "全コンテナがホストCPUを奪い合う。単独実行より必ず悪化する。悪化の「幅」が本番同居時のリスク。")}
 
   <h2>3. 読み方</h2>
   <ul>

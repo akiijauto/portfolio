@@ -32,7 +32,7 @@
 <body>
 <main>
 <h1>Lang Bench コンソール</h1>
-<p class="muted">3サービスの疎通確認と、実装が同じ計算結果を返すか（パリティ）のブラウザ実行テスト。
+<p class="muted">全サービスの疎通確認と、実装が同じ計算結果を返すか（パリティ）のブラウザ実行テスト。
 本番の性能計測は <code>harness/bench.py</code> で行う。ここは動作確認用。</p>
 
 <fieldset>
@@ -48,7 +48,10 @@
 <div id="out"></div>
 
 <script>
-const LANGS = [['py','Python'],['go','Go'],['rb','Ruby']];
+const LANGS = [
+  ['py', 'Python'], ['go', 'Go'], ['rb', 'Ruby'], ['ts', 'TypeScript'],
+  ['java', 'Java'], ['cs', 'C#'], ['php', 'PHP'], ['rs', 'Rust'],
+];
 const out = document.getElementById('out');
 const num = (id) => parseInt(document.getElementById(id).value, 10);
 

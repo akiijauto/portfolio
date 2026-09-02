@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>振り返り — Python / Go / Ruby 性能比較ベンチマーク</title>
+<title>振り返り — バックエンド言語 性能比較ベンチマーク</title>
 <style>
   :root { color-scheme: light dark; --fg:#1a1a1a; --bg:#fff; --line:#d8d8d8; --muted:#666; --panel:#f7f7f8; --warn:#c0392b; }
   @media (prefers-color-scheme: dark) {
@@ -39,11 +39,12 @@
 <body>
 <main>
 
-<h1>振り返り — Python / Go / Ruby 性能比較ベンチマーク</h1>
-<p class="meta">開発中に実際にぶつかった課題と、その解決策。次に同種のベンチマークを作るときに繰り返さないための記録。<br>作成日: 2026-09-02 ／ 対象: <code>portfolio/projects/38_lang_bench</code></p>
+<h1>振り返り — バックエンド言語 性能比較ベンチマーク</h1>
+<p class="meta">開発中に実際にぶつかった課題と、その解決策。次に同種のベンチマークを作るときに繰り返さないための記録。<br>作成日: 2026-09-02（第1版: 3言語）／ 更新: 2026-09-02（第2版: 8言語へ拡張、CI追加）<br>対象: <code>portfolio/projects/38_lang_bench</code></p>
 
 <h2>総括</h2>
-<p>このプロジェクトで一番時間を使ったのは、3言語のコードを書くことではなく<strong>「3つが本当に同じ仕事をしていると証明すること」</strong>と<strong>「計測が言語以外の要因で汚れないようにすること」</strong>だった。ベンチマークの価値は数値の精度ではなく、<strong>その数値が何を比べているかを説明できるかどうか</strong>にある。</p>
+<p>このプロジェクトで一番時間を使ったのは、各言語のコードを書くことではなく<strong>「全実装が本当に同じ仕事をしていると証明すること」</strong>と<strong>「計測が言語以外の要因で汚れないようにすること」</strong>だった。ベンチマークの価値は数値の精度ではなく、<strong>その数値が何を比べているかを説明できるかどうか</strong>にある。</p>
+<p>3言語から8言語へ拡張したとき、この判断が正しかったことが確認できた。<strong>計算ロジックをHTTP層から切り離してゴールデンテストで固定してあったため、言語追加は「core を1つ書いてテストを1つ足す」だけの機械的な作業になった。</strong>もしロジックがHTTPハンドラに埋まったままなら、追加のたびに8サービスを起動しての目視確認が要り、5言語も足せなかった。</p>
 
 <h2>課題と解決策</h2>
 
@@ -172,11 +173,111 @@ thresholds: {
 <p class="lesson"><strong>学び:</strong> 環境の制約は「できない」で止めず、<strong>できる検証とできない検証に分解する</strong>。分解できれば、制約のある環境でも品質の大半は先に確保できる。そして「どこまで検証済みか」を文書に残しておけば、実機作業者は残りだけに集中できる。</p>
 </div>
 
+<h2>言語拡張時（第2版）に起きた課題と解決策</h2>
+
+<div class="case">
+<h3>10. 追加した5言語のうち、丸めの標準関数が「3種類」に分かれていた<span class="tag">正確性</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>第1版で Python の偶数丸めを踏んだので、追加言語では最初から <code>floor(x*100+0.5)/100</code> の式に揃えて実装した。実際に調べると、標準の丸めは3系統に分かれていた。</dd>
+  <dt>整理した結果</dt>
+  <dd>
+    <ul>
+      <li><strong>偶数丸め（そのままだと金額が食い違う）</strong>: Python <code>round()</code>、C# <code>Math.Round()</code></li>
+      <li><strong>0.5を常に +∞ 側へ（負値で食い違う）</strong>: JavaScript <code>Math.round()</code>、Java <code>Math.round()</code></li>
+      <li><strong>0.5を絶対値の大きい側へ（意図どおり）</strong>: Go、Ruby、PHP、Rust</li>
+    </ul>
+    8言語のうち<strong>半数が、標準関数をそのまま使うと食い違う</strong>。同じ名前の関数が同じ意味とは限らないという第1版の学びが、より広い範囲で裏付けられた形になった。
+  </dd>
+  <dt>対処</dt>
+  <dd>「一致する側」の4言語も含めて全8言語で同じ式を明示的に書き、なぜその式なのかをコメントに残した。要件定義に言語別の丸め挙動の対応表を追加し、次に言語を足す人が最初にここを読むようにした。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 一度踏んだ罠は、次の実装で<strong>先回りしてチェックリストにする</strong>。「たまたま一致する言語」も明示的に揃えておかないと、標準ライブラリの挙動が変わったときに静かに壊れる。</p>
+</div>
+
+<div class="case">
+<h3>11. C# だけ、この環境で検証できなかった<span class="tag">環境</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>開発環境に <code>node</code> / <code>java</code> / <code>php</code> / <code>cargo</code> は入っていたが、<code>dotnet</code> だけ無かった。8言語のうち7言語はその場でゴールデンテストを通せたが、C# だけ「書いたが動かしていない」状態になった。</dd>
+  <dt>なぜ問題か</dt>
+  <dd>未検証の実装が1つでも混ざると、「8言語のパリティが取れている」という主張が成立しない。しかも<strong>それが見えにくい</strong>のが厄介で、7言語が通ったことに満足して残り1つを忘れる。</dd>
+  <dt>対処</dt>
+  <dd>2段構えにした。
+    <ol>
+      <li><code>harness/run_tests.py</code> を作り、ツールチェーンが無い言語を <strong>SKIP として名前付きで報告</strong>させた。黙って飛ばすと「テストが通った」と誤解するため、最後に「未検証: C#（dotnet がホストに無い）」と必ず出す。</li>
+      <li>GitHub Actions で8言語すべてのツールチェーンを用意し、<strong>SKIP が1つでも出たらCIを失敗させる</strong>。ローカルで飛ばせても、CI では飛ばせない。</li>
+    </ol>
+  </dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 「検証できなかった」は記録に残して初めて管理できる。<strong>スキップを成功と区別できない仕組みは、スキップを隠す仕組みと同じ</strong>。CI は「全部やる場所」として使い、ローカルは「できる範囲でやる場所」と役割を分ける。</p>
+</div>
+
+<div class="case">
+<h3>12. 期待値ファイルの再生成忘れを、テストが検出できなかった<span class="tag">設計</span></h3>
+<dl>
+  <dt>気づいたこと</dt>
+  <dd><code>tests/golden.json</code> は Python 実装から生成される。ということは、<strong>Python の <code>core.py</code> を変えて golden を再生成し忘れると、他7言語は古い期待値と比較され続ける</strong>。7言語すべてが緑のまま、Python だけが仕様から外れる状態になる。</dd>
+  <dt>なぜテストで検出できないか</dt>
+  <dd>Python のテストは golden と比較するが、その golden 自体が Python から作られている。<strong>自分で作った答案で自分を採点している</strong>ので、ずれても気づけない。</dd>
+  <dt>対処</dt>
+  <dd>CI に「期待値ファイルの鮮度チェック」を追加した。<code>gen_golden.py</code> を再実行して <code>git diff --exit-code tests/golden.json</code> が通ることを確認する。差分が出れば「再生成してコミットせよ」とエラーで止める。
+  <div class="scroll"><pre><code>python3 harness/gen_golden.py
+git diff --exit-code tests/golden.json \
+  || (echo "::error::tests/golden.json が古い。make golden で再生成してコミットすること。" &amp;&amp; exit 1)</code></pre></div></dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> リファレンス実装を基準にする設計には、<strong>「リファレンス自身は誰が検証するのか」</strong>という穴が必ず空く。生成物をリポジトリに置くなら、生成が最新かを機械的に確かめる仕掛けをセットで用意する。</p>
+</div>
+
+<div class="case">
+<h3>13. PHP の JSON 出力で、小数がひとりでに整数になった<span class="tag">正確性</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>PHP の <code>json_encode()</code> は、<code>3755.00</code> のような小数部がゼロの float を <code>3755</code> と出力する。ロジック側のゴールデンテスト（PHP の値同士の比較）は通るのに、<strong>起動中サービスの応答を突き合わせる <code>make verify</code> やブラウザのパリティ検証だけが落ちる</strong>という、原因の分かりにくい壊れ方をする。</dd>
+  <dt>対処</dt>
+  <dd><code>JSON_PRESERVE_ZERO_FRACTION</code> フラグを付け、なぜ必要かをコメントで明記した。</dd>
+  <dt>関連して整理したこと</dt>
+  <dd>Java の record と C# のプロパティは命名が camelCase / PascalCase になるため、そのままシリアライズすると<strong>キー名が他言語と食い違う</strong>。両方とも応答を組み立てる箇所で明示的に <code>order_id</code> 形式のキーへ変換し、キーの順序も揃えた。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 「同じ値」と「同じJSON」は別物。ロジックのテストが通っても<strong>シリアライズ層で崩れる</strong>ことがあるので、値レベル（ゴールデンテスト）と応答レベル（<code>make verify</code>）の両方を持つ意味がある。片方だけでは足りない。</p>
+</div>
+
+<div class="case">
+<h3>14. 言語ごとに「コンテナのCPU上限を認識しない」挙動が違った<span class="tag">公平性</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>コンテナに <code>cpus: 2.0</code> を課しても、ランタイムが素直にそれを見てくれるとは限らない。
+    <ul>
+      <li><strong>JVM</strong>: 既定ではコンテナのメモリ上限を無視してヒープを取りに行く挙動があり、上限付近でGC過多や起動失敗を招く</li>
+      <li><strong>Rust / Tokio</strong>: <code>available_parallelism</code> から並列度を決めるが、cgroup 制限の読み取り可否で結果が変わりうる</li>
+      <li><strong>Node</strong>: 1プロセス1スレッドなので、放っておくと2CPU割当のうち1つしか使わない</li>
+    </ul>
+    どれも「上限を揃えたつもりで揃っていない」状態になり、比較の前提が静かに崩れる。</dd>
+  <dt>対処</dt>
+  <dd>ランタイム任せをやめ、すべて明示指定にした。JVM は <code>-XX:MaxRAMPercentage=75</code>、Tokio は環境変数からワーカースレッド数を読む、Node は <code>cluster</code> で2ワーカーを立てる。さらに<strong>CI で全サービスの <code>cpus</code> / <code>mem_limit</code> が完全一致することを機械的に検証</strong>し、目視に頼らないようにした。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 「同じ制約を課した」は「同じ制約で動いている」を意味しない。<strong>制約を課す側（Docker）と受け取る側（ランタイム）の両方を確認する</strong>。そして公平性の根幹にあたる条件は、レビューではなくCIで固定する。</p>
+</div>
+
+<div class="case">
+<h3>15. 言語が増えると、同時実行のスタートバリアが足りなくなった<span class="tag">公平性</span></h3>
+<dl>
+  <dt>気づいたこと</dt>
+  <dd>スタートバリアの猶予は3言語時代に8秒で設計した。8言語では負荷コンテナを8本起動することになり、<strong>最初と最後の起動差が8秒に収まらない可能性がある</strong>。間に合わなかった言語は、他が走り出したあとから参加することになり、その言語だけ条件が変わる。</dd>
+  <dt>対処</dt>
+  <dd>既定の猶予を15秒に引き上げ、「言語を増やすほど長くする」ことをオプションの説明とREADMEのトラブルシューティングに明記した。「concurrent モードで一部の言語だけ結果が欠ける → <code>--barrier</code> を伸ばす」という対処法まで書いた。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 規模を変えると、<strong>元の規模で妥当だった定数が静かに不適切になる</strong>。マジックナンバーには「何に対して決めた値か」を書き添えておくと、拡張時に見直すべき箇所として引っかかる。</p>
+</div>
+
 <h2>設計判断の記録（採用しなかった案とその理由）</h2>
 <table>
   <thead><tr><th>検討した案</th><th>不採用の理由</th></tr></thead>
   <tbody>
     <tr><td>各言語で最速のライブラリ構成にする（orjson、Cアクセラレータ等）</td><td>「その言語で普通に商用APIを書いたらどうなるか」を知りたいため。最速構成の比較は別の問いであり、混ぜると結論が曖昧になる。</td></tr>
+    <tr><td>PHP も他言語に合わせてアプリ自身にHTTPを話させる</td><td>PHP でその構成は商用でまず使わない。nginx + php-fpm の2段構成そのものが「PHPで商用APIを立てたときの姿」なので、無理に揃えるとPHPを測ったことにならない。</td></tr>
+    <tr><td>Java / C# をフレームワーク無しで実装して軽くする</td><td>どちらもフレームワーク無しで商用APIを書くことはまずない。Spring Boot / ASP.NET Core の起動時間と常駐メモリを含めた実像を見る。</td></tr>
+    <tr><td>各言語のテストに xUnit / PHPUnit などを導入する</td><td>この検証に必要なのは「golden.json と一致するか」だけ。そのために NuGet / Composer の依存解決をCIとローカルの両方に持ち込む価値が無い。素の実行可能ファイルで足りる。</td></tr>
     <tr><td>Python 側で pydantic の自動バリデーションを使う</td><td>Go / Ruby は手動でJSONを解釈しており、Python だけフレームワーク機能を使うと処理内容が変わる。公平性のため3言語とも手動解釈に統一した。</td></tr>
     <tr><td>PostgreSQL を挟んで I/O 集約の負荷も同時に測る</td><td>DB がボトルネックになると3言語とも同じ数値に収束し、言語差が見えなくなる。まず CPU + JSON + 並行処理の比較を確定させてから、別シナリオとして追加する。</td></tr>
     <tr><td>k6 ではなく各言語で負荷生成スクリプトを書く</td><td>負荷生成側の性能差が計測に混入する。負荷元は3言語すべてに対して同一でなければならない。</td></tr>
@@ -187,7 +288,8 @@ thresholds: {
 
 <h2>次にやること</h2>
 <ol>
-  <li><strong>PC 実機で基準測定（P4）。</strong> 既定パラメータで <code>make bench</code> を3回実行し、ばらつきの幅を確認する。</li>
+  <li><strong>CI で C# のパリティを確認する。</strong> この環境で唯一検証できなかった言語。CI が緑になって初めて「8言語のパリティが取れている」と言える。</li>
+  <li><strong>PC 実機で基準測定（P4）。</strong> 既定パラメータで <code>make bench</code> を3回実行し、ばらつきの幅を確認する。8言語 × 2CPU の同時実行はホストの容量を要求するので、足りなければ <code>--langs</code> で絞る。</li>
   <li><strong>感度分析（P5）。</strong> 基準測定で差が出た軸に絞って <code>rounds</code> / <code>items</code> / <code>vus</code> を振る。差が出なかった軸を振っても情報は増えない。</li>
   <li><strong>結果の記録。</strong> 各条件の <code>report.html</code> と、そこから読み取った判断を Notion に残す。</li>
   <li><strong>本ドキュメントの更新。</strong> 実測フェーズで新たに判明した課題を追記する。実測でしか出てこない問題（サーマルスロットリング、ホスト側のばらつき等）は必ずある。</li>
