@@ -38,6 +38,7 @@
 
 | ディレクトリ | 概要 |
 | --- | --- |
+| [`38_local_rag`](projects/38_local_rag/) | ローカル完結RAG検索（HTML 5000件・インストール不要・Gemini/スプレッドシート貼付用出力） |
 | [`17_inquiry_crm`](projects/17_inquiry_crm/) | 問い合わせ管理CRM（進捗ステータス管理＋返信文生成） |
 | [`18_subsidy_matching`](projects/18_subsidy_matching/) | 補助金・助成金マッチング＆事業計画ドラフト生成 |
 | [`10_budget_tracker`](projects/10_budget_tracker/) | 家計簿ダッシュボード（Chart.js + SQLAlchemy集計） |
