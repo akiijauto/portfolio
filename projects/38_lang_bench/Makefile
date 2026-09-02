@@ -7,7 +7,7 @@ COMPOSE := docker compose
 help: ## このヘルプを表示
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
-test: ## 全言語のロジック一致テスト（Docker不要。コード変更時は必ず実行）
+test: ## 全言語の検査（ロジック一致 + HTTP層のビルド。Docker不要。コード変更時は必ず実行）
 	python3 -m unittest discover -s tests -p 'test_*.py'
 	cd services/go && go test ./...
 	ruby services/ruby/test_core.rb
@@ -16,8 +16,12 @@ test: ## 全言語のロジック一致テスト（Docker不要。コード変�
 	php services/php/tests/core_test.php
 	cd services/rust && cargo test --quiet
 	cd services/csharp/tests && dotnet run --configuration Release
+	python3 -m py_compile services/python/app.py services/python/core.py
+	ruby -c services/ruby/app.rb
+	php -l services/php/public/index.php
+	cd services/csharp && dotnet build lang-bench-csharp.csproj -c Release --nologo
 
-test-quick: ## ホストに入っている言語だけでロジック一致テストを走らせる
+test-quick: ## ホストに入っている言語だけ検査する（ロジック一致 + HTTP層）
 	@python3 harness/run_tests.py
 
 golden: ## 期待値 tests/golden.json を再生成（仕様を変えたときだけ）

@@ -78,7 +78,7 @@
 
 <h3>1.3 ホストに言語処理系は要るか</h3>
 <p><strong>計測だけなら不要。</strong> 8言語すべてコンテナ内でビルドされる。</p>
-<p>ただし <code>make test</code>（ロジック一致テスト）はホストの処理系を使うため、フルで走らせるには <code>go</code> / <code>ruby</code> / <code>npm</code> / <code>mvn</code> / <code>php</code> / <code>cargo</code> / <code>dotnet</code> が必要になる。<strong>揃っていないのが普通</strong>なので、ローカルでは <code>make test-quick</code>（入っている言語だけ検証し、欠けている言語を明示的に報告する）を使い、8言語すべての検証は CI に任せる。</p>
+<p>ただし <code>make test</code>（ロジック一致テストとHTTP層の検査）はホストの処理系を使うため、フルで走らせるには <code>go</code> / <code>ruby</code> / <code>npm</code> / <code>mvn</code> / <code>php</code> / <code>cargo</code> / <code>dotnet</code> が必要になる。<strong>揃っていないのが普通</strong>なので、ローカルでは <code>make test-quick</code>（入っている言語だけ検証し、欠けている言語を明示的に報告する）を使い、8言語すべての検証は CI に任せる。</p>
 
 <div class="panel">
   <h4 class="must">実行場所に関する注意</h4>
@@ -89,13 +89,13 @@
 <div class="scroll"><pre><code>cd portfolio/projects/38_lang_bench
 
 # 1) ロジック一致テスト（Docker不要）
-make test-quick   # ホストに入っている言語だけ。数秒〜1分
+make test-quick   # ホストに入っている言語だけ検査（ロジック一致 + HTTP層）。数秒〜1分
 make test         # 8言語すべて。全処理系が入っている場合のみ
 
 # 2) 8言語のイメージをビルド（初回は15〜30分程度）
 make build</code></pre></div>
 <p><code>make</code> を使わない場合:</p>
-<div class="scroll"><pre><code>python3 harness/run_tests.py    # 入っている言語だけロジック一致テスト
+<div class="scroll"><pre><code>python3 harness/run_tests.py    # 入っている言語だけ検査（ロジック一致 + HTTP層）
 docker compose build</code></pre></div>
 <p>初回ビルドは Rust の <code>cargo build --release</code>（LTO 有効）と Java の Maven 依存解決が支配的。2回目以降は Docker のレイヤキャッシュが効くため大幅に速くなる。</p>
 
@@ -250,6 +250,7 @@ docker compose down --rmi local   # イメージも削除する場合</code></pr
   <tbody>
     <tr><td>期待値ファイルの鮮度</td><td><code>gen_golden.py</code> を再実行し <code>tests/golden.json</code> に差分が出ないこと。Python 実装を変えて再生成し忘れると、他言語だけが古い期待値と比較され続けるため。</td></tr>
     <tr><td>全8言語のロジック一致</td><td>8つのツールチェーンを用意して <code>run_tests.py</code> を実行。<strong>SKIP が1つでも出たら失敗</strong>させる（見逃すとその言語だけ未検証のまま緑になる）。</td></tr>
+    <tr><td>HTTP層のビルド/構文検査</td><td>ロジックテストは <code>core</code> しか読まない。Go / TypeScript / Java / Rust はテストがHTTP層まで巻き込んでコンパイルするが、<strong>Python / Ruby / PHP / C# は <code>core</code> しか通らない</strong>。この4つを別途検査し、実機ビルドで初めて落ちるのを防ぐ。</td></tr>
     <tr><td>Compose 定義の検証</td><td><code>docker compose config</code> が通ること。</td></tr>
     <tr><td>リソース上限の均一性</td><td>全サービスの <code>cpus</code> / <code>mem_limit</code> が完全一致すること。公平性の根幹なので目視に頼らない。</td></tr>
   </tbody>

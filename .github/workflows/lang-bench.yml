@@ -27,7 +27,7 @@ defaults:
 
 jobs:
   parity:
-    name: 全言語ロジック一致
+    name: 全言語ロジック一致・HTTP層ビルド
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -99,10 +99,15 @@ jobs:
           git diff --exit-code tests/golden.json \
             || (echo "::error::tests/golden.json が古い。make golden で再生成してコミットすること。" && exit 1)
 
-      - name: 全言語のロジック一致テスト
+      - name: 全言語の検査（ロジック一致 + HTTP層のビルド）
         # run_tests.py はツールチェーンが無い言語を SKIP して成功扱いにする。
         # CI では全言語を用意しているので、SKIP が出たらこのワークフロー側の
         # 不備であり、見逃すと「その言語だけ未検証のまま緑」になる。
+        #
+        # HTTP層の検査が要るのは、ロジックテストが core だけを読むため。
+        # Go / TypeScript / Java / Rust は言語の仕組み上テストがHTTP層まで
+        # 巻き込んでコンパイルするが、Python / Ruby / PHP / C# は core しか
+        # 通らない。実機で docker compose build して初めて落ちるのを防ぐ。
         run: |
           set -o pipefail
           python3 harness/run_tests.py | tee /tmp/parity.log

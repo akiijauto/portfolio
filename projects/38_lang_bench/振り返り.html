@@ -272,6 +272,24 @@ git diff --exit-code tests/golden.json \
 <p class="lesson"><strong>学び:</strong> 規模を変えると、<strong>元の規模で妥当だった定数が静かに不適切になる</strong>。マジックナンバーには「何に対して決めた値か」を書き添えておくと、拡張時に見直すべき箇所として引っかかる。</p>
 </div>
 
+<div class="case">
+<h3>16. HTTP層が一度もコンパイルされていない言語が4つあった<span class="tag">検証</span></h3>
+<dl>
+  <dt>気づいたこと</dt>
+  <dd>CI が緑になったあとで検証範囲を数え直したところ、<strong>C# の <code>Program.cs</code> はこの時点で一度もコンパイルされていなかった</strong>。テストプロジェクトは <code>Score.cs</code> だけを取り込む構成にしてあり、HTTP層はビルド対象に入っていない。</dd>
+  <dt>4言語で同じ穴が空いていた</dt>
+  <dd>ロジックテストは <code>core</code> だけを読む設計にしてある。ここで言語の性質が効いてきて、検証範囲が2つに割れていた。
+    <ul>
+      <li><strong>HTTP層まで巻き込む</strong>: Go（<code>go test</code> が package main 全体をコンパイル）、TypeScript（<code>tsc</code> が <code>src/</code> 全体）、Java（<code>mvn test</code> が main sources）、Rust（<code>cargo test</code> が bin もビルド）</li>
+      <li><strong>core しか通らない</strong>: Python <code>app.py</code>、Ruby <code>app.rb</code>、PHP <code>index.php</code>、C# <code>Program.cs</code></li>
+    </ul>
+    後者4つは、<strong><code>docker compose build</code> して初めて壊れに気づく</strong>。実機でビルドに15〜30分かけたあとに構文エラーで落ちる、という最悪の気づき方になる。</dd>
+  <dt>対処</dt>
+  <dd><code>run_tests.py</code> に「HTTP層の構文/ビルド検査」の段を足した。Python は <code>py_compile</code>、Ruby は <code>ruby -c</code>、PHP は <code>php -l</code>、C# は <code>dotnet build</code>。すでにHTTP層まで検証している4言語は二重に時間をかけないよう対象から外し、その理由をコードコメントに書いた。SKIP の扱いは既存の仕組みをそのまま引き継ぐ。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 「テストが通った」は「コードが全部コンパイルされた」を意味しない。<strong>テストの網が実際にどのファイルまで届いているかは、言語ごとに違う</strong>。ロジックをHTTP層から分離する設計は正しかったが、分離した以上「分離された側は誰が見るのか」を決める責任がセットで発生していた。課題12（リファレンス自身は誰が検証するのか）と同じ形の穴で、<strong>設計で何かを切り離すたびに、切り離した側の担当を明示する</strong>べきだった。</p>
+</div>
+
 <h2>設計判断の記録（採用しなかった案とその理由）</h2>
 <table>
   <thead><tr><th>検討した案</th><th>不採用の理由</th></tr></thead>

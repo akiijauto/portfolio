@@ -7,7 +7,7 @@ results/*
 services/node/node_modules/
 services/node/dist/
 services/java/target/
-services/csharp/bin/
-services/csharp/obj/
+services/csharp/**/bin/
+services/csharp/**/obj/
 services/php/vendor/
 services/rust/target/

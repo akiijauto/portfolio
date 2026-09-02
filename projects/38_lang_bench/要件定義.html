@@ -220,7 +220,7 @@
 <h3>7.1 パリティ検証（性能計測の前提条件）</h3>
 <p>計算ロジックは HTTP 層から切り離し（<code>core.py</code> / <code>score.go</code> / <code>core.rb</code> / <code>core.ts</code> / <code>Score.java</code> / <code>Score.cs</code> / <code>Score.php</code> / <code>score.rs</code>）、Python 実装を基準として <code>tests/golden.json</code> に期待値を固定する。他7言語のテストはこのファイルと完全一致することを検証する。</p>
 <ul>
-  <li><code>make test</code> — Docker 不要。全8言語のロジック一致を検証する。<strong>コード変更時は必ず実行。</strong></li>
+  <li><code>make test</code> — Docker 不要。全8言語のロジック一致とHTTP層のビルドを検証する。<strong>コード変更時は必ず実行。</strong></li>
   <li><code>make test-quick</code> — ホストに入っている言語だけ検証し、欠けている言語を「未検証」として明示する。8言語のツールチェーンがローカルに揃っていない場合はこちら。</li>
   <li><code>make verify</code> — 実際に起動した8サービスへ同一リクエストを投げ、応答の一致を検証する。<strong>計測の直前に実行。</strong></li>
 </ul>
@@ -234,6 +234,7 @@
 <ol>
   <li><strong>期待値ファイルの鮮度</strong> — <code>gen_golden.py</code> を再実行して <code>tests/golden.json</code> に差分が出ないことを確認する。Python 実装を変えたのに再生成し忘れると、他言語だけが古い期待値と比較され続けるため。</li>
   <li><strong>全8言語のロジック一致</strong> — 8つのツールチェーンを用意して <code>run_tests.py</code> を実行する。<strong>SKIP が1つでも出たら失敗させる</strong>（CI 側の不備であり、見逃すとその言語だけ未検証のまま緑になる）。</li>
+  <li><strong>HTTP層のビルド/構文検査</strong> — ロジックテストは <code>core</code> だけを読む。Go / TypeScript / Java / Rust は言語の仕組み上テストがHTTP層まで巻き込んでコンパイルするが、<strong>Python / Ruby / PHP / C# は <code>core</code> しか通らない</strong>。この4つは <code>docker compose build</code> して初めて壊れに気づくことになるため、構文検査（Python / Ruby / PHP）とビルド（C#）を別途通す。</li>
   <li><strong>Compose 定義の妥当性</strong> — <code>docker compose config</code> が通ること。</li>
   <li><strong>リソース上限の均一性</strong> — 全サービスの <code>cpus</code> と <code>mem_limit</code> が完全に一致することを機械的に確認する。公平性の根幹なので目視に頼らない。</li>
 </ol>
