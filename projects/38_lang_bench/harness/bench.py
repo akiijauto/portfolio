@@ -54,6 +54,13 @@ def compose(*args, **kwargs):
 
 def preflight():
     """前提が崩れたまま走らせると無意味な数値が出るので、ここで必ず止める。"""
+    if sys.platform == "win32":
+        # Windows ネイティブでも docker -v は通るが、Makefile が Unix ツールに
+        # 依存しており、結果ディレクトリのパス変換でも事故りやすい。
+        # 計測対象は Linux コンテナなので、WSL2 で走らせても数値の意味は変わらない。
+        print("[WARN] Windows ネイティブで実行している。WSL2 上での実行を推奨"
+              "（README.html の「Windows での実行」を参照）。", flush=True)
+
     for binary in ("docker",):
         if shutil.which(binary) is None:
             sys.exit(f"[FATAL] {binary} が見つからない。README.html の前提条件を参照。")
@@ -96,8 +103,10 @@ def k6_command(svc, out_dir, start_at_ms, args, detach):
         *(["-d"] if detach else []),
         "--name", f"k6-{svc}",
         "--network", "lang-bench-net",
-        "-v", f"{ROOT / 'loadgen'}:/scripts:ro",
-        "-v", f"{out_dir}:/out",
+        # Windows では pathlib がバックスラッシュ区切りを返す。docker -v の
+        # 区切り文字と衝突して壊れるため、as_posix() でスラッシュに統一する。
+        "-v", f"{(ROOT / 'loadgen').as_posix()}:/scripts:ro",
+        "-v", f"{out_dir.as_posix()}:/out",
         "-e", f"TARGET_URL=http://{container}:8000",
         "-e", f"LANG={svc}",
         "-e", f"START_AT={start_at_ms}",

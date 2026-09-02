@@ -85,6 +85,52 @@
   <p>計測は<strong>PC実機または専用VPSでのみ</strong>行うこと。クラウド開発セッションはCPU割当が共有かつ変動し、そこで出した数値は再現性がないため言語選定の根拠にできない。</p>
 </div>
 
+<h2>1.4 Windows での実行</h2>
+<div class="panel">
+  <h4 class="must">Windows ネイティブ（PowerShell / コマンドプロンプト）では動かない</h4>
+  <p>本プロジェクトのコマンドは Linux/macOS シェル前提で、Windows では以下が引っかかる。<strong>WSL2 上で実行すること。</strong></p>
+</div>
+<table>
+  <thead><tr><th>箇所</th><th>Windows ネイティブでの問題</th></tr></thead>
+  <tbody>
+    <tr><td><code>make</code></td><td>標準で入っていない</td></tr>
+    <tr><td><code>nproc</code></td><td>存在しない（<code>echo %NUMBER_OF_PROCESSORS%</code> が相当）</td></tr>
+    <tr><td><code>BENCH_CPUS=1.0 make bench</code></td><td>環境変数の前置きは POSIX シェル構文。PowerShell では <code>$env:BENCH_CPUS="1.0"</code></td></tr>
+    <tr><td><code>python3</code></td><td>通常は <code>python</code></td></tr>
+    <tr><td>Makefile 内の <code>grep</code> / <code>awk</code> / <code>read -p</code></td><td>Unix ツール前提</td></tr>
+  </tbody>
+</table>
+<p><strong>計測の妥当性は WSL2 でも変わらない。</strong> 計測対象は Linux コンテナであり、Docker Desktop はもともと WSL2 をバックエンドに使っているため、ネイティブ実行と同じコンテナが同じように走る。</p>
+
+<h3>WSL2 での手順</h3>
+<div class="scroll"><pre><code># 1) WSL2 の確認（未導入なら PowerShell を管理者で開いて wsl --install）
+wsl -l -v
+
+# 2) Docker Desktop の設定
+#    Settings → Resources → WSL Integration で使用するディストリビューションを有効にする
+
+# 3) WSL のシェルに入り、必要なら make を入れる
+wsl
+sudo apt-get update &amp;&amp; sudo apt-get install -y make
+
+# 4) 以降は本書の手順どおり
+cd /mnt/c/&lt;リポジトリを置いた場所&gt;/portfolio/projects/38_lang_bench
+make test-quick</code></pre></div>
+
+<div class="panel">
+  <h4>リポジトリの置き場所に注意</h4>
+  <p><code>/mnt/c/...</code>（Windows 側のディスク）に置くとファイルI/Oが遅く、ビルド時間が大きく伸びる。可能なら <strong>WSL のホームディレクトリ配下（<code>~/portfolio</code>）にクローンする</strong>ほうが速い。ただし計測されるのはコンテナ内のCPU処理なので、ビルドが遅いだけで<strong>計測値そのものは変わらない</strong>。</p>
+</div>
+
+<h3>make を使わない場合</h3>
+<p><code>make</code> が使えない環境では、Makefile の各ターゲットの中身をそのまま打てばよい。</p>
+<div class="scroll"><pre><code>python3 harness/run_tests.py                      # make test-quick 相当
+docker compose build                              # make build 相当
+docker compose --profile tools up -d py go rb ts java cs php rs console   # make console 相当
+python3 harness/verify_parity.py                  # make verify 相当
+python3 harness/bench.py --mode both              # make bench 相当
+docker compose --profile tools down --remove-orphans   # make down 相当</code></pre></div>
+
 <h2>2. セットアップ</h2>
 <div class="scroll"><pre><code>cd portfolio/projects/38_lang_bench
 
