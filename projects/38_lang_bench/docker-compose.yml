@@ -1,0 +1,103 @@
+# 3言語のAPIサーバを「同一のCPU/メモリ上限」で並べる。
+# 上限を揃えないと言語差ではなくホストの空きリソース差を測ることになるため、
+# deploy.resources.limits は3サービスで必ず同じ値にすること。
+name: lang-bench
+
+x-limits: &limits
+  deploy:
+    resources:
+      limits:
+        cpus: "${BENCH_CPUS:-2.0}"
+        memory: "${BENCH_MEMORY:-512m}"
+  cpus: ${BENCH_CPUS:-2.0}
+  mem_limit: ${BENCH_MEMORY:-512m}
+  restart: "no"
+  networks: [bench]
+
+services:
+  py:
+    <<: *limits
+    container_name: bench-py
+    build: ./services/python
+    environment:
+      PORT: 8000
+      WORKERS: ${BENCH_WORKERS:-2}
+    ports: ["18001:8000"]
+
+  go:
+    <<: *limits
+    container_name: bench-go
+    build: ./services/go
+    environment:
+      PORT: 8000
+      GOMAXPROCS: ${BENCH_WORKERS:-2}
+    ports: ["18002:8000"]
+
+  rb:
+    <<: *limits
+    container_name: bench-rb
+    build: ./services/ruby
+    environment:
+      PORT: 8000
+      WORKERS: ${BENCH_WORKERS:-2}
+      THREADS: ${BENCH_THREADS:-8}
+    ports: ["18003:8000"]
+
+  ts:
+    <<: *limits
+    container_name: bench-ts
+    build: ./services/node
+    environment:
+      PORT: 8000
+      WORKERS: ${BENCH_WORKERS:-2}
+    ports: ["18004:8000"]
+
+  java:
+    <<: *limits
+    container_name: bench-java
+    build: ./services/java
+    environment:
+      PORT: 8000
+    ports: ["18005:8000"]
+
+  cs:
+    <<: *limits
+    container_name: bench-cs
+    build: ./services/csharp
+    environment:
+      PORT: 8000
+    ports: ["18006:8000"]
+
+  php:
+    <<: *limits
+    container_name: bench-php
+    build: ./services/php
+    environment:
+      PHP_FPM_CHILDREN: ${BENCH_PHP_CHILDREN:-8}
+    ports: ["18007:8000"]
+
+  rs:
+    <<: *limits
+    container_name: bench-rs
+    build: ./services/rust
+    environment:
+      PORT: 8000
+      WORKERS: ${BENCH_WORKERS:-2}
+    ports: ["18008:8000"]
+
+  # ブラウザ実行テスト用。profiles 指定により通常のベンチ実行では起動しない
+  # （負荷計測中にnginxがCPUを分け合うと比較が歪むため）。
+  console:
+    container_name: bench-console
+    image: nginx:1.27-alpine
+    profiles: ["tools"]
+    volumes:
+      - ./console/index.html:/usr/share/nginx/html/index.html:ro
+      - ./console/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports: ["18080:80"]
+    restart: "no"
+    networks: [bench]
+
+networks:
+  bench:
+    name: lang-bench-net

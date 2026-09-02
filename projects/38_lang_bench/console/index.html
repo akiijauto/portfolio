@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lang Bench コンソール</title>
+<style>
+  :root { color-scheme: light dark; --fg:#1a1a1a; --bg:#fff; --line:#d8d8d8; --muted:#666; --panel:#f7f7f8; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e8e8e8; --bg:#16181c; --line:#333; --muted:#9aa0a6; --panel:#1e2126; }
+  }
+  body { margin:0; padding:2rem 1.25rem; background:var(--bg); color:var(--fg);
+         font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif; line-height:1.7; }
+  main { max-width:900px; margin:0 auto; }
+  h1 { font-size:1.5rem; margin:0 0 1rem; }
+  fieldset { border:1px solid var(--line); border-radius:8px; padding:1rem; margin:0 0 1.25rem; }
+  legend { padding:0 .4rem; font-weight:600; }
+  label { display:inline-block; margin-right:1rem; font-size:.9rem; }
+  input[type=number] { width:7rem; padding:.3rem .4rem; }
+  button { padding:.5rem 1.1rem; font-size:.95rem; border-radius:6px; border:1px solid var(--line);
+           background:var(--panel); color:var(--fg); cursor:pointer; }
+  button:disabled { opacity:.5; cursor:progress; }
+  table { border-collapse:collapse; width:100%; font-size:.9rem; margin-top:1rem; }
+  th, td { border-bottom:1px solid var(--line); padding:.5rem .6rem; text-align:left; }
+  td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  pre { background:var(--panel); border:1px solid var(--line); border-radius:8px;
+        padding:.8rem; overflow-x:auto; font-size:.8rem; }
+  .ok { color:#1a7f37; } .ng { color:#c22; }
+  .muted { color:var(--muted); font-size:.85rem; }
+</style>
+</head>
+<body>
+<main>
+<h1>Lang Bench コンソール</h1>
+<p class="muted">全サービスの疎通確認と、実装が同じ計算結果を返すか（パリティ）のブラウザ実行テスト。
+本番の性能計測は <code>harness/bench.py</code> で行う。ここは動作確認用。</p>
+
+<fieldset>
+  <legend>パラメータ</legend>
+  <label>SHA-256反復 <input id="rounds" type="number" value="200" min="1" max="100000"></label>
+  <label>明細数 <input id="items" type="number" value="12" min="1" max="500"></label>
+  <label>連続リクエスト数 <input id="n" type="number" value="20" min="1" max="500"></label>
+  <p><button id="health">1. ヘルスチェック</button>
+     <button id="parity">2. パリティ検証</button>
+     <button id="quick">3. 簡易スループット測定</button></p>
+</fieldset>
+
+<div id="out"></div>
+
+<script>
+const LANGS = [
+  ['py', 'Python'], ['go', 'Go'], ['rb', 'Ruby'], ['ts', 'TypeScript'],
+  ['java', 'Java'], ['cs', 'C#'], ['php', 'PHP'], ['rs', 'Rust'],
+];
+const out = document.getElementById('out');
+const num = (id) => parseInt(document.getElementById(id).value, 10);
+
+function buildPayload(rounds, items) {
+  const list = [];
+  for (let j = 0; j < items; j++) {
+    list.push({ sku: 'SKU-' + String(j).padStart(4, '0'), qty: (j % 9) + 1, unit_price: (j * 137 % 5000) + 0.5 });
+  }
+  return { order_id: 'ORD-BROWSER-0001', items: list, customer: { tier: 'gold', history_days: 400 }, rounds };
+}
+
+async function post(lang, payload) {
+  const res = await fetch(`/api/${lang}/api/v1/score`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+function render(html) { out.innerHTML = html; }
+function busy(on) { document.querySelectorAll('button').forEach((b) => (b.disabled = on)); }
+
+document.getElementById('health').onclick = async () => {
+  busy(true);
+  const rows = [];
+  for (const [lang, label] of LANGS) {
+    try {
+      const res = await fetch(`/api/${lang}/healthz`);
+      const body = await res.json();
+      rows.push(`<tr><th>${label}</th><td class="ok">OK</td><td><code>${JSON.stringify(body)}</code></td></tr>`);
+    } catch (e) {
+      rows.push(`<tr><th>${label}</th><td class="ng">NG</td><td>${e.message}</td></tr>`);
+    }
+  }
+  render(`<table><thead><tr><th>言語</th><th>状態</th><th>応答</th></tr></thead><tbody>${rows.join('')}</tbody></table>`);
+  busy(false);
+};
+
+document.getElementById('parity').onclick = async () => {
+  busy(true);
+  const payload = buildPayload(num('rounds'), num('items'));
+  const results = {};
+  for (const [lang] of LANGS) {
+    try { results[lang] = await post(lang, payload); } catch (e) { results[lang] = { error: e.message }; }
+  }
+  // lang フィールドだけは実装ごとに異なって当然なので比較から外す
+  const strip = (o) => { const c = { ...o }; delete c.lang; return JSON.stringify(c); };
+  const base = strip(results.py || {});
+  const rows = LANGS.map(([lang, label]) => {
+    const same = strip(results[lang] || {}) === base;
+    return `<tr><th>${label}</th><td class="${same ? 'ok' : 'ng'}">${same ? '一致' : '不一致'}</td>
+            <td><code>total=${results[lang]?.total ?? '-'} sig=${(results[lang]?.signature ?? '').slice(0, 16)}…</code></td></tr>`;
+  });
+  render(`<table><thead><tr><th>言語</th><th>Python基準との比較</th><th>抜粋</th></tr></thead><tbody>${rows.join('')}</tbody></table>
+          <pre>${JSON.stringify(results, null, 2)}</pre>`);
+  busy(false);
+};
+
+document.getElementById('quick').onclick = async () => {
+  busy(true);
+  const payload = buildPayload(num('rounds'), num('items'));
+  const n = num('n');
+  const rows = [];
+  for (const [lang, label] of LANGS) {
+    const samples = [];
+    try {
+      for (let i = 0; i < n; i++) {
+        const t0 = performance.now();
+        await post(lang, payload);
+        samples.push(performance.now() - t0);
+      }
+      samples.sort((a, b) => a - b);
+      const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
+      const p95 = samples[Math.min(samples.length - 1, Math.floor(samples.length * 0.95))];
+      rows.push(`<tr><th>${label}</th><td class="num">${avg.toFixed(1)}</td><td class="num">${samples[0].toFixed(1)}</td>
+                 <td class="num">${p95.toFixed(1)}</td><td class="num">${(1000 / avg).toFixed(1)}</td></tr>`);
+    } catch (e) {
+      rows.push(`<tr><th>${label}</th><td colspan="4" class="ng">${e.message}</td></tr>`);
+    }
+  }
+  render(`<p class="muted">ブラウザからの逐次1本測定。並列度1なので絶対値は bench.py の結果と一致しない。傾向確認用。</p>
+    <table><thead><tr><th>言語</th><th>平均 ms</th><th>最小 ms</th><th>p95 ms</th><th>逐次RPS</th></tr></thead>
+    <tbody>${rows.join('')}</tbody></table>`);
+  busy(false);
+};
+</script>
+</main>
+</body>
+</html>

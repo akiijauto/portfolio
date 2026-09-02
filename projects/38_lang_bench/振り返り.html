@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>振り返り — バックエンド言語 性能比較ベンチマーク</title>
+<style>
+  :root { color-scheme: light dark; --fg:#1a1a1a; --bg:#fff; --line:#d8d8d8; --muted:#666; --panel:#f7f7f8; --warn:#c0392b; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e8e8e8; --bg:#16181c; --line:#333; --muted:#9aa0a6; --panel:#1e2126; --warn:#ff8a80; }
+  }
+  body { margin:0; padding:2.5rem 1.25rem 5rem; background:var(--bg); color:var(--fg);
+         font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif; line-height:1.8; }
+  main { max-width:940px; margin:0 auto; }
+  h1 { font-size:1.7rem; margin:0 0 .3rem; }
+  h2 { font-size:1.25rem; margin:2.75rem 0 .6rem; padding-bottom:.35rem; border-bottom:2px solid var(--line); }
+  h3 { font-size:1.02rem; margin:2rem 0 .4rem; }
+  .meta { color:var(--muted); font-size:.9rem; margin:0 0 1.5rem; }
+  .case { border:1px solid var(--line); border-radius:10px; padding:1rem 1.2rem; margin:1.2rem 0; background:var(--panel); }
+  .case h3 { margin-top:0; }
+  .case dl { margin:0; }
+  .case dt { font-weight:600; font-size:.85rem; color:var(--muted); margin-top:.7rem; letter-spacing:.02em; }
+  .case dd { margin:.15rem 0 0; }
+  .tag { display:inline-block; font-size:.72rem; padding:.1rem .5rem; border-radius:999px;
+         border:1px solid var(--line); background:var(--bg); color:var(--muted); margin-left:.5rem; vertical-align:.15em; }
+  code { background:var(--bg); border:1px solid var(--line); border-radius:4px; padding:.05rem .3rem; font-size:.86em; }
+  pre { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.6; }
+  pre code { background:none; border:none; padding:0; }
+  table { border-collapse:collapse; width:100%; font-size:.9rem; margin:.8rem 0 1.2rem; }
+  th, td { border:1px solid var(--line); padding:.5rem .65rem; text-align:left; vertical-align:top; }
+  thead th { background:var(--panel); font-weight:600; }
+  ul, ol { padding-left:1.35rem; }
+  li { margin:.25rem 0; }
+  .lesson { border-left:4px solid var(--warn); padding-left:.9rem; margin:.8rem 0 0; }
+  .lesson strong { color:var(--warn); }
+  .scroll { overflow-x:auto; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>振り返り — バックエンド言語 性能比較ベンチマーク</h1>
+<p class="meta">開発中に実際にぶつかった課題と、その解決策。次に同種のベンチマークを作るときに繰り返さないための記録。<br>作成日: 2026-09-02（第1版: 3言語）／ 更新: 2026-09-02（第2版: 8言語へ拡張、CI追加。初回CIで8言語のパリティ一致を確認）<br>対象: <code>portfolio/projects/38_lang_bench</code></p>
+
+<h2>総括</h2>
+<p>このプロジェクトで一番時間を使ったのは、各言語のコードを書くことではなく<strong>「全実装が本当に同じ仕事をしていると証明すること」</strong>と<strong>「計測が言語以外の要因で汚れないようにすること」</strong>だった。ベンチマークの価値は数値の精度ではなく、<strong>その数値が何を比べているかを説明できるかどうか</strong>にある。</p>
+<p>3言語から8言語へ拡張したとき、この判断が正しかったことが確認できた。<strong>計算ロジックをHTTP層から切り離してゴールデンテストで固定してあったため、言語追加は「core を1つ書いてテストを1つ足す」だけの機械的な作業になった。</strong>もしロジックがHTTPハンドラに埋まったままなら、追加のたびに8サービスを起動しての目視確認が要り、5言語も足せなかった。</p>
+
+<h2>課題と解決策</h2>
+
+<div class="case">
+<h3>1. Python の round() が偶数丸めで、3言語の金額が食い違った<span class="tag">正確性</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>同一の注文データに対し、Python だけが Go / Ruby と異なる合計金額を返した。<code>round(2.675, 2)</code> が Python では <code>2.67</code>、Go の <code>math.Round</code> と Ruby の <code>Float#round</code> では <code>2.68</code> になる。</dd>
+  <dt>原因</dt>
+  <dd>Python の組み込み <code>round()</code> は「0.5 を偶数側へ」丸めるバンカーズ丸め。Go / Ruby は「0.5 を絶対値の大きい側へ」丸める。<strong>言語の標準関数の名前が同じでも意味が同じとは限らない。</strong></dd>
+  <dt>対処</dt>
+  <dd>Python 側で明示的に <code>math.floor(x*100+0.5)/100</code> を実装し、丸め方を仕様として固定した。加えて「Python の round は偶数丸めなので使えない」という理由をコード内コメントとテストの両方に残した。
+  <div class="scroll"><pre><code>def round2(value: float) -> float:
+    """Go の math.Round / Ruby の Float#round と同じ「0.5は絶対値の大きい側へ」。
+    組み込みの round() は偶数丸めなので、そのまま使うと3実装で金額が食い違う。"""
+    if value >= 0:
+        return math.floor(value * 100 + 0.5) / 100
+    return -(math.floor(-value * 100 + 0.5) / 100)</code></pre></div></dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 複数言語で同一ロジックを実装するときは、丸め・ソートの安定性・辞書の順序・整数除算の符号といった「暗黙の仕様」が最初に破綻する。処理の流れではなく<strong>境界値</strong>から先にテストを書く。</p>
+</div>
+
+<div class="case">
+<h3>2. 「3実装が同じ仕事をしている」保証が無いまま計測しかけた<span class="tag">設計</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>当初は計算ロジックを各言語の HTTP ハンドラの中に直接書いていた。この状態では、実装差を検出するには実際にサーバを3本起動して叩くしかなく、Docker が使えない環境では検証できなかった。</dd>
+  <dt>なぜ問題か</dt>
+  <dd>性能比較は「同じ仕事をさせている」ことが唯一の前提。片方が手を抜いていれば速いのは当たり前で、数値は無意味になる。この前提の検証コストが高いと、<strong>忙しいときに検証が省かれて壊れた比較が残る。</strong></dd>
+  <dt>対処</dt>
+  <dd>計算ロジックを HTTP 層から切り離した（<code>core.py</code> / <code>score.go</code> / <code>core.rb</code>）。Python 実装を基準として期待値を <code>tests/golden.json</code> に固定し、Go と Ruby のテストが同じファイルを読んで完全一致を検証する構成にした。<strong>Docker もサーバ起動も不要で、数秒で3言語の一致が確認できる。</strong>署名（SHA-256 の200回チェーン）まで含めて一致することを機械的に保証している。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> ベンチマークにおける「同一性の検証」は付随的なテストではなく<strong>主要機能</strong>。検証を安く速くする設計に投資すると、以後すべての計測結果の信頼性が上がる。</p>
+</div>
+
+<div class="case">
+<h3>3. k6 のフェーズ別集計ができず、ウォームアップの遅さが本計測に混ざった<span class="tag">計測</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>ウォームアップ・定常・スパイクの3フェーズを1つのシナリオで走らせたところ、サマリが全フェーズ合算の数値しか出さなかった。ウォームアップ中の遅いリクエストが p95 を押し上げ、特に JIT を持つ Ruby が不当に不利になった。</dd>
+  <dt>原因</dt>
+  <dd>k6 はタグ付きサブメトリクスを自動では集計しない。<strong><code>thresholds</code> に書いたサブメトリクスだけが</strong> サマリの <code>data.metrics</code> に現れる、という仕様を把握していなかった。</dd>
+  <dt>対処</dt>
+  <dd>フェーズ別に見たい指標をすべて <code>thresholds</code> に宣言し、<code>handleSummary()</code> で JSON に書き出すようにした。閾値が「受け入れ基準」と「サブメトリクスの宣言」を兼ねている点をコメントで明記し、うっかり消すとレポートが空になることを警告した。
+  <div class="scroll"><pre><code>// thresholds は受け入れ基準であると同時に「サブメトリクスの宣言」でもある。
+// ここに書いたタグ付きメトリクスだけが handleSummary の data.metrics に現れる。
+thresholds: {
+  'http_req_duration{phase:steady}': ['p(95)&lt;1000'],
+  'http_reqs{phase:steady}':         ['count&gt;0'],
+  ...
+}</code></pre></div></dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 計測ツールは「取得したデータ」と「出力するデータ」が一致しない。<strong>欲しい数値がレポートに出るところまでを最初に一度通す</strong>べきで、負荷シナリオを作り込んでから集計方法を考えると作り直しになる。</p>
+</div>
+
+<div class="case">
+<h3>4. 負荷をホストの公開ポート経由でかけ、docker-proxy がボトルネックになった<span class="tag">計測</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>初期案では <code>http://localhost:18001</code> のようにホスト公開ポートへ負荷をかける想定だった。この経路では全トラフィックが <code>docker-proxy</code> を通り、高負荷時にはそこが詰まって<strong>3言語とも似たような数値に収束してしまう</strong>。</dd>
+  <dt>対処</dt>
+  <dd>負荷生成コンテナを計測対象と同じ Docker ネットワークに参加させ、<code>http://bench-go:8000</code> のようにコンテナ名で直接叩く構成にした。ホスト公開ポートは動作確認とブラウザテスト専用と位置づけた。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 差が出ないときは「差が無い」ではなく<strong>「経路上の別の何かで頭打ちになっている」</strong>を先に疑う。計測対象より手前に共通のボトルネックがあると、あらゆる比較が潰れる。</p>
+</div>
+
+<div class="case">
+<h3>5. 3言語同時実行の開始タイミングがずれ、先に始まった言語が有利になった<span class="tag">公平性</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>3本の負荷コンテナを順に <code>docker run -d</code> で起動すると、コンテナ生成とスクリプト読み込みに数秒のばらつきが出る。最初に始まった言語は空いている CPU を独占でき、最後の言語は最初から競合状態で走ることになる。<strong>これでは同時実行を測る意味がない。</strong></dd>
+  <dt>対処</dt>
+  <dd>スタートバリアを実装した。オーケストレータが「現在時刻 + 8秒」を epoch ミリ秒で確定し、3本すべてに同じ値を <code>START_AT</code> として渡す。各負荷スクリプトは <code>setup()</code> でその時刻まで待ってから走り出す。ユーザ要望の「3つの Docker を同時に動かすタイマー」はこの仕組みで実現している。</dd>
+  <dt>実装上の注意</dt>
+  <dd>k6 の <code>sleep()</code> は秒単位なので、ミリ秒精度を出すためにビジーウェイトにした。待機は負荷開始前なので計測値には影響しない。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 「同時に動かす」は「同時に起動コマンドを打つ」ではない。<strong>比較したい条件を揃えるには、揃えるための仕掛けを明示的に作る</strong>必要がある。</p>
+</div>
+
+<div class="case">
+<h3>6. 監視スタックを入れようとして、観測が観測対象を歪めることに気づいた<span class="tag">計測</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>資源使用量の計測に cAdvisor + Prometheus + Grafana を立てる案を検討した。時系列の精度は高いが、<strong>監視スタック自身が同じホストの CPU を数十%消費する</strong>。3コンテナで CPU を奪い合う状況を測りたいのに、観測装置が第4の競合者として混ざる。</dd>
+  <dt>対処</dt>
+  <dd><code>docker stats</code> を1秒間隔でポーリングして CSV に落とすだけの薄いサンプラに切り替えた。精度は落ちるが観測コストが最小で、比較の公平性を壊さない。この判断理由を <code>collector.py</code> の冒頭コメントに残し、「精度が必要になったら差し替える」ことを明記した。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 計測系の道具選びは「精度が高いほど良い」ではない。<strong>観測が対象に与える影響</strong>を勘定に入れて、目的に対して十分な最小の手段を選ぶ。</p>
+</div>
+
+<div class="case">
+<h3>7. ブラウザ実行テストの CORS を、計測対象サーバに手を入れずに解決した<span class="tag">設計</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>ブラウザから3サービスを叩くテスト画面を作ろうとしたが、ポートが違うため CORS で弾かれる。素直に対処するなら3サービスすべてに CORS ヘッダ処理と OPTIONS ハンドラを足すことになる。</dd>
+  <dt>なぜ問題か</dt>
+  <dd>計測対象のハンドラに<strong>ベンチマーク本来の仕様に無い処理を足すことになる</strong>。3言語それぞれで実装コストが違うため、その差がそのまま性能差として混入する。</dd>
+  <dt>対処</dt>
+  <dd>nginx のリバースプロキシを1本立て、3サービスを <code>/api/py/</code> <code>/api/go/</code> <code>/api/rb/</code> として同一オリジン配下にぶら下げた。CORS 自体が不要になる。さらに Compose の <code>profiles: ["tools"]</code> でこのコンテナを分離し、<strong>本計測時には起動しない</strong>ようにした（nginx が CPU を分け合うと比較が歪むため）。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 計測対象に手を入れずに済ませる方法を先に探す。<strong>「テストのために本体を変える」は最後の手段</strong>で、特にベンチマークでは変更そのものが結果を汚す。</p>
+</div>
+
+<div class="case">
+<h3>8. CPU 使用率の平均が、アイドル区間に薄められて実態を表さなかった<span class="tag">計測</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>資源サンプラは起動待ち・安定待ち・負荷終了後もサンプルを取り続けるため、単純平均を出すとアイドル区間（CPU 数%）に引っ張られ、負荷中の実際の消費が読めなくなった。</dd>
+  <dt>対処</dt>
+  <dd>CPU 使用率のサンプルを降順に並べ、<strong>上位50%だけを平均</strong>する方式にした。負荷区間はサンプル全体のおおむね半分以上を占めるため、アイドル区間を機械的に除外できる。この処理の意図をコードコメントとレポート本文の両方に書き、読み手が「単純平均ではない」ことを誤解しないようにした。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 集計方法は数値と同じくらい重要な情報。<strong>加工したなら、加工したことをレポートの読み手に伝える</strong>。伝えない集計は誤読を生む。</p>
+</div>
+
+<div class="case">
+<h3>9. クラウドセッションに Docker デーモンが無く、実測ができなかった<span class="tag">環境</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>開発を行ったクラウドセッションには <code>docker</code> コマンドはあるがデーモンが動いておらず、コンテナのビルドも起動もできなかった。Python の FastAPI も Ruby の Sinatra も未導入で、サーバを直接起動しての確認もできない。</dd>
+  <dt>対処</dt>
+  <dd>検証を2層に分けた。<strong>Docker を必要としない層</strong>（3言語の計算ロジックの一致）を切り出し、その環境で実際に走らせて Go・Ruby・Python すべてで期待値との完全一致を確認した。Docker を必要とする層（性能計測そのもの）は PC 実機の作業と明示的に位置づけ、要件定義と README の両方に実行場所の分離表を書いた。</dd>
+  <dt>結果</dt>
+  <dd>クラウド側で保証できたこと: 3言語の全構文、計算ロジックの完全一致（署名・丸め・ソート順を含む）、バリデーション挙動、レポート生成器の動作（合成データで検証）。<br>
+  PC 実機に残したこと: イメージビルド、負荷計測、ブラウザ実行テスト。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 環境の制約は「できない」で止めず、<strong>できる検証とできない検証に分解する</strong>。分解できれば、制約のある環境でも品質の大半は先に確保できる。そして「どこまで検証済みか」を文書に残しておけば、実機作業者は残りだけに集中できる。</p>
+</div>
+
+<h2>言語拡張時（第2版）に起きた課題と解決策</h2>
+
+<div class="case">
+<h3>10. 追加した5言語のうち、丸めの標準関数が「3種類」に分かれていた<span class="tag">正確性</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>第1版で Python の偶数丸めを踏んだので、追加言語では最初から <code>floor(x*100+0.5)/100</code> の式に揃えて実装した。実際に調べると、標準の丸めは3系統に分かれていた。</dd>
+  <dt>整理した結果</dt>
+  <dd>
+    <ul>
+      <li><strong>偶数丸め（そのままだと金額が食い違う）</strong>: Python <code>round()</code>、C# <code>Math.Round()</code></li>
+      <li><strong>0.5を常に +∞ 側へ（負値で食い違う）</strong>: JavaScript <code>Math.round()</code>、Java <code>Math.round()</code></li>
+      <li><strong>0.5を絶対値の大きい側へ（意図どおり）</strong>: Go、Ruby、PHP、Rust</li>
+    </ul>
+    8言語のうち<strong>半数が、標準関数をそのまま使うと食い違う</strong>。同じ名前の関数が同じ意味とは限らないという第1版の学びが、より広い範囲で裏付けられた形になった。
+  </dd>
+  <dt>対処</dt>
+  <dd>「一致する側」の4言語も含めて全8言語で同じ式を明示的に書き、なぜその式なのかをコメントに残した。要件定義に言語別の丸め挙動の対応表を追加し、次に言語を足す人が最初にここを読むようにした。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 一度踏んだ罠は、次の実装で<strong>先回りしてチェックリストにする</strong>。「たまたま一致する言語」も明示的に揃えておかないと、標準ライブラリの挙動が変わったときに静かに壊れる。</p>
+</div>
+
+<div class="case">
+<h3>11. C# だけ、この環境で検証できなかった<span class="tag">環境</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>開発環境に <code>node</code> / <code>java</code> / <code>php</code> / <code>cargo</code> は入っていたが、<code>dotnet</code> だけ無かった。8言語のうち7言語はその場でゴールデンテストを通せたが、C# だけ「書いたが動かしていない」状態になった。</dd>
+  <dt>なぜ問題か</dt>
+  <dd>未検証の実装が1つでも混ざると、「8言語のパリティが取れている」という主張が成立しない。しかも<strong>それが見えにくい</strong>のが厄介で、7言語が通ったことに満足して残り1つを忘れる。</dd>
+  <dt>対処</dt>
+  <dd>2段構えにした。
+    <ol>
+      <li><code>harness/run_tests.py</code> を作り、ツールチェーンが無い言語を <strong>SKIP として名前付きで報告</strong>させた。黙って飛ばすと「テストが通った」と誤解するため、最後に「未検証: C#（dotnet がホストに無い）」と必ず出す。</li>
+      <li>GitHub Actions で8言語すべてのツールチェーンを用意し、<strong>SKIP が1つでも出たらCIを失敗させる</strong>。ローカルで飛ばせても、CI では飛ばせない。</li>
+    </ol>
+  </dd>
+  <dt>結果</dt>
+  <dd>初回CIで <code>OK: 8 / FAIL: 0 / SKIP: 0</code>。C# を含む8言語すべてがゴールデン期待値と一致した。<strong>ローカルで検証できなかった1言語を、仕組みとして取りこぼさずに済んだ。</strong></dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 「検証できなかった」は記録に残して初めて管理できる。<strong>スキップを成功と区別できない仕組みは、スキップを隠す仕組みと同じ</strong>。CI は「全部やる場所」として使い、ローカルは「できる範囲でやる場所」と役割を分ける。</p>
+</div>
+
+<div class="case">
+<h3>12. 期待値ファイルの再生成忘れを、テストが検出できなかった<span class="tag">設計</span></h3>
+<dl>
+  <dt>気づいたこと</dt>
+  <dd><code>tests/golden.json</code> は Python 実装から生成される。ということは、<strong>Python の <code>core.py</code> を変えて golden を再生成し忘れると、他7言語は古い期待値と比較され続ける</strong>。7言語すべてが緑のまま、Python だけが仕様から外れる状態になる。</dd>
+  <dt>なぜテストで検出できないか</dt>
+  <dd>Python のテストは golden と比較するが、その golden 自体が Python から作られている。<strong>自分で作った答案で自分を採点している</strong>ので、ずれても気づけない。</dd>
+  <dt>対処</dt>
+  <dd>CI に「期待値ファイルの鮮度チェック」を追加した。<code>gen_golden.py</code> を再実行して <code>git diff --exit-code tests/golden.json</code> が通ることを確認する。差分が出れば「再生成してコミットせよ」とエラーで止める。
+  <div class="scroll"><pre><code>python3 harness/gen_golden.py
+git diff --exit-code tests/golden.json \
+  || (echo "::error::tests/golden.json が古い。make golden で再生成してコミットすること。" &amp;&amp; exit 1)</code></pre></div></dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> リファレンス実装を基準にする設計には、<strong>「リファレンス自身は誰が検証するのか」</strong>という穴が必ず空く。生成物をリポジトリに置くなら、生成が最新かを機械的に確かめる仕掛けをセットで用意する。</p>
+</div>
+
+<div class="case">
+<h3>13. PHP の JSON 出力で、小数がひとりでに整数になった<span class="tag">正確性</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>PHP の <code>json_encode()</code> は、<code>3755.00</code> のような小数部がゼロの float を <code>3755</code> と出力する。ロジック側のゴールデンテスト（PHP の値同士の比較）は通るのに、<strong>起動中サービスの応答を突き合わせる <code>make verify</code> やブラウザのパリティ検証だけが落ちる</strong>という、原因の分かりにくい壊れ方をする。</dd>
+  <dt>対処</dt>
+  <dd><code>JSON_PRESERVE_ZERO_FRACTION</code> フラグを付け、なぜ必要かをコメントで明記した。</dd>
+  <dt>関連して整理したこと</dt>
+  <dd>Java の record と C# のプロパティは命名が camelCase / PascalCase になるため、そのままシリアライズすると<strong>キー名が他言語と食い違う</strong>。両方とも応答を組み立てる箇所で明示的に <code>order_id</code> 形式のキーへ変換し、キーの順序も揃えた。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 「同じ値」と「同じJSON」は別物。ロジックのテストが通っても<strong>シリアライズ層で崩れる</strong>ことがあるので、値レベル（ゴールデンテスト）と応答レベル（<code>make verify</code>）の両方を持つ意味がある。片方だけでは足りない。</p>
+</div>
+
+<div class="case">
+<h3>14. 言語ごとに「コンテナのCPU上限を認識しない」挙動が違った<span class="tag">公平性</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>コンテナに <code>cpus: 2.0</code> を課しても、ランタイムが素直にそれを見てくれるとは限らない。
+    <ul>
+      <li><strong>JVM</strong>: 既定ではコンテナのメモリ上限を無視してヒープを取りに行く挙動があり、上限付近でGC過多や起動失敗を招く</li>
+      <li><strong>Rust / Tokio</strong>: <code>available_parallelism</code> から並列度を決めるが、cgroup 制限の読み取り可否で結果が変わりうる</li>
+      <li><strong>Node</strong>: 1プロセス1スレッドなので、放っておくと2CPU割当のうち1つしか使わない</li>
+    </ul>
+    どれも「上限を揃えたつもりで揃っていない」状態になり、比較の前提が静かに崩れる。</dd>
+  <dt>対処</dt>
+  <dd>ランタイム任せをやめ、すべて明示指定にした。JVM は <code>-XX:MaxRAMPercentage=75</code>、Tokio は環境変数からワーカースレッド数を読む、Node は <code>cluster</code> で2ワーカーを立てる。さらに<strong>CI で全サービスの <code>cpus</code> / <code>mem_limit</code> が完全一致することを機械的に検証</strong>し、目視に頼らないようにした。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 「同じ制約を課した」は「同じ制約で動いている」を意味しない。<strong>制約を課す側（Docker）と受け取る側（ランタイム）の両方を確認する</strong>。そして公平性の根幹にあたる条件は、レビューではなくCIで固定する。</p>
+</div>
+
+<div class="case">
+<h3>15. 言語が増えると、同時実行のスタートバリアが足りなくなった<span class="tag">公平性</span></h3>
+<dl>
+  <dt>気づいたこと</dt>
+  <dd>スタートバリアの猶予は3言語時代に8秒で設計した。8言語では負荷コンテナを8本起動することになり、<strong>最初と最後の起動差が8秒に収まらない可能性がある</strong>。間に合わなかった言語は、他が走り出したあとから参加することになり、その言語だけ条件が変わる。</dd>
+  <dt>対処</dt>
+  <dd>既定の猶予を15秒に引き上げ、「言語を増やすほど長くする」ことをオプションの説明とREADMEのトラブルシューティングに明記した。「concurrent モードで一部の言語だけ結果が欠ける → <code>--barrier</code> を伸ばす」という対処法まで書いた。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 規模を変えると、<strong>元の規模で妥当だった定数が静かに不適切になる</strong>。マジックナンバーには「何に対して決めた値か」を書き添えておくと、拡張時に見直すべき箇所として引っかかる。</p>
+</div>
+
+<div class="case">
+<h3>16. HTTP層が一度もコンパイルされていない言語が4つあった<span class="tag">検証</span></h3>
+<dl>
+  <dt>気づいたこと</dt>
+  <dd>CI が緑になったあとで検証範囲を数え直したところ、<strong>C# の <code>Program.cs</code> はこの時点で一度もコンパイルされていなかった</strong>。テストプロジェクトは <code>Score.cs</code> だけを取り込む構成にしてあり、HTTP層はビルド対象に入っていない。</dd>
+  <dt>4言語で同じ穴が空いていた</dt>
+  <dd>ロジックテストは <code>core</code> だけを読む設計にしてある。ここで言語の性質が効いてきて、検証範囲が2つに割れていた。
+    <ul>
+      <li><strong>HTTP層まで巻き込む</strong>: Go（<code>go test</code> が package main 全体をコンパイル）、TypeScript（<code>tsc</code> が <code>src/</code> 全体）、Java（<code>mvn test</code> が main sources）、Rust（<code>cargo test</code> が bin もビルド）</li>
+      <li><strong>core しか通らない</strong>: Python <code>app.py</code>、Ruby <code>app.rb</code>、PHP <code>index.php</code>、C# <code>Program.cs</code></li>
+    </ul>
+    後者4つは、<strong><code>docker compose build</code> して初めて壊れに気づく</strong>。実機でビルドに15〜30分かけたあとに構文エラーで落ちる、という最悪の気づき方になる。</dd>
+  <dt>対処</dt>
+  <dd><code>run_tests.py</code> に「HTTP層の構文/ビルド検査」の段を足した。Python は <code>py_compile</code>、Ruby は <code>ruby -c</code>、PHP は <code>php -l</code>、C# は <code>dotnet build</code>。すでにHTTP層まで検証している4言語は二重に時間をかけないよう対象から外し、その理由をコードコメントに書いた。SKIP の扱いは既存の仕組みをそのまま引き継ぐ。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 「テストが通った」は「コードが全部コンパイルされた」を意味しない。<strong>テストの網が実際にどのファイルまで届いているかは、言語ごとに違う</strong>。ロジックをHTTP層から分離する設計は正しかったが、分離した以上「分離された側は誰が見るのか」を決める責任がセットで発生していた。課題12（リファレンス自身は誰が検証するのか）と同じ形の穴で、<strong>設計で何かを切り離すたびに、切り離した側の担当を明示する</strong>べきだった。</p>
+</div>
+
+<h2>設計判断の記録（採用しなかった案とその理由）</h2>
+<table>
+  <thead><tr><th>検討した案</th><th>不採用の理由</th></tr></thead>
+  <tbody>
+    <tr><td>各言語で最速のライブラリ構成にする（orjson、Cアクセラレータ等）</td><td>「その言語で普通に商用APIを書いたらどうなるか」を知りたいため。最速構成の比較は別の問いであり、混ぜると結論が曖昧になる。</td></tr>
+    <tr><td>PHP も他言語に合わせてアプリ自身にHTTPを話させる</td><td>PHP でその構成は商用でまず使わない。nginx + php-fpm の2段構成そのものが「PHPで商用APIを立てたときの姿」なので、無理に揃えるとPHPを測ったことにならない。</td></tr>
+    <tr><td>Java / C# をフレームワーク無しで実装して軽くする</td><td>どちらもフレームワーク無しで商用APIを書くことはまずない。Spring Boot / ASP.NET Core の起動時間と常駐メモリを含めた実像を見る。</td></tr>
+    <tr><td>各言語のテストに xUnit / PHPUnit などを導入する</td><td>この検証に必要なのは「golden.json と一致するか」だけ。そのために NuGet / Composer の依存解決をCIとローカルの両方に持ち込む価値が無い。素の実行可能ファイルで足りる。</td></tr>
+    <tr><td>Python 側で pydantic の自動バリデーションを使う</td><td>Go / Ruby は手動でJSONを解釈しており、Python だけフレームワーク機能を使うと処理内容が変わる。公平性のため3言語とも手動解釈に統一した。</td></tr>
+    <tr><td>PostgreSQL を挟んで I/O 集約の負荷も同時に測る</td><td>DB がボトルネックになると3言語とも同じ数値に収束し、言語差が見えなくなる。まず CPU + JSON + 並行処理の比較を確定させてから、別シナリオとして追加する。</td></tr>
+    <tr><td>k6 ではなく各言語で負荷生成スクリプトを書く</td><td>負荷生成側の性能差が計測に混入する。負荷元は3言語すべてに対して同一でなければならない。</td></tr>
+    <tr><td>cAdvisor + Prometheus + Grafana で資源監視</td><td>監視スタック自身が CPU を消費し、比較を歪める（課題6）。</td></tr>
+    <tr><td>計測結果をリポジトリにコミットする</td><td>実行環境ごとに変わる生成物であり、条件の違う結果が混在すると誤った比較を生む。<code>.gitignore</code> し、共有はレポート単体で行う。</td></tr>
+  </tbody>
+</table>
+
+<h2>次にやること</h2>
+<ol>
+  <li><s>CI で C# のパリティを確認する。</s> <strong>完了（2026-09-02）。</strong> CI で <code>OK: 8 / FAIL: 0 / SKIP: 0</code>、8言語すべてのロジック一致を確認した。<br>
+      この課題11の対処（SKIP を名前付きで報告し、CI では SKIP を失敗扱いにする）が実際に機能し、ローカルで検証できなかった1言語を取りこぼさずに済んだ。</li>
+  <li><strong>PC 実機で基準測定（P4）。</strong> 既定パラメータで <code>make bench</code> を3回実行し、ばらつきの幅を確認する。8言語 × 2CPU の同時実行はホストの容量を要求するので、足りなければ <code>--langs</code> で絞る。</li>
+  <li><strong>感度分析（P5）。</strong> 基準測定で差が出た軸に絞って <code>rounds</code> / <code>items</code> / <code>vus</code> を振る。差が出なかった軸を振っても情報は増えない。</li>
+  <li><strong>結果の記録。</strong> 各条件の <code>report.html</code> と、そこから読み取った判断を Notion に残す。</li>
+  <li><strong>本ドキュメントの更新。</strong> 実測フェーズで新たに判明した課題を追記する。実測でしか出てこない問題（サーマルスロットリング、ホスト側のばらつき等）は必ずある。</li>
+</ol>
+
+</main>
+</body>
+</html>

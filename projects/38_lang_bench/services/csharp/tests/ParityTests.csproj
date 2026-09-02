@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- xUnit ではなく素の実行可能プロジェクトにしてある。この検証に必要なのは
+       「golden.json と一致するか」だけで、そのために NuGet の依存解決を
+       CI とローカルの両方に持ち込む価値が無いため。 -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>lang-bench-csharp-tests</AssemblyName>
+    <RootNamespace>Bench.Tests</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../Score.cs" />
+  </ItemGroup>
+
+</Project>

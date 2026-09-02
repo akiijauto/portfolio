@@ -80,6 +80,7 @@
 | ディレクトリ | 概要 |
 | --- | --- |
 | [`12_pytest_suite`](projects/12_pytest_suite/) | モック・インメモリDB・Flaskテストクライアントによるユニットテスト |
+| [`38_lang_bench`](projects/38_lang_bench/) | バックエンド言語8種の性能比較ベンチマーク（Docker同時実行・k6負荷試験） |
 
 ## セットアップ
 

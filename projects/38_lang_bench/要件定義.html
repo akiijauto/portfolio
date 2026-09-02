@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>要件定義 — バックエンド言語 性能比較ベンチマーク</title>
+<style>
+  :root { color-scheme: light dark; --fg:#1a1a1a; --bg:#fff; --line:#d8d8d8; --muted:#666; --panel:#f7f7f8; --accent:#2b6cb0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e8e8e8; --bg:#16181c; --line:#333; --muted:#9aa0a6; --panel:#1e2126; --accent:#7fb3e8; }
+  }
+  body { margin:0; padding:2.5rem 1.25rem 5rem; background:var(--bg); color:var(--fg);
+         font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif; line-height:1.8; }
+  main { max-width:940px; margin:0 auto; }
+  h1 { font-size:1.7rem; margin:0 0 .3rem; }
+  h2 { font-size:1.25rem; margin:2.75rem 0 .6rem; padding-bottom:.35rem; border-bottom:2px solid var(--line); }
+  h3 { font-size:1.02rem; margin:1.9rem 0 .4rem; }
+  .meta { color:var(--muted); font-size:.9rem; margin:0 0 1.5rem; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:.9rem 1.1rem; margin:1rem 0; }
+  .panel h4 { margin:0 0 .4rem; font-size:.95rem; }
+  table { border-collapse:collapse; width:100%; font-size:.9rem; margin:.8rem 0 1.2rem; }
+  th, td { border:1px solid var(--line); padding:.5rem .65rem; text-align:left; vertical-align:top; }
+  thead th { background:var(--panel); font-weight:600; }
+  code { background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:.05rem .3rem; font-size:.86em; }
+  pre { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:.9rem 1rem; overflow-x:auto; font-size:.82rem; line-height:1.6; }
+  pre code { background:none; border:none; padding:0; }
+  ul, ol { padding-left:1.35rem; }
+  li { margin:.2rem 0; }
+  .must { color:#c0392b; font-weight:600; }
+  @media (prefers-color-scheme: dark) { .must { color:#ff8a80; } }
+  .scroll { overflow-x:auto; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>要件定義 — バックエンド言語 性能比較ベンチマーク</h1>
+<p class="meta">プロジェクト: <code>portfolio/projects/38_lang_bench</code> ／ 仕様ID: <strong>SPEC-API-v1</strong> ／ 作成日: 2026-09-02</p>
+
+<h2>1. 背景と目的</h2>
+<p>商用サービスのバックエンド言語を選定するにあたり、「どれが速いか」という一般論ではなく、<strong>自分たちのワークロードで、自分たちのサーバ上で、どれだけの差が出るか</strong>を数値で押さえたい。</p>
+<p>本プロジェクトは、<strong>8言語</strong>に<strong>完全に同一の業務処理</strong>を実装し、同一のリソース上限を課したDockerコンテナ上で、同一の負荷シナリオを流して比較する計測基盤である。</p>
+<p>対象は Python / Go / Ruby / TypeScript / Java / C# / PHP / Rust。いずれも商用バックエンドで実績のある言語で、並行処理モデル（GIL、goroutine、仮想スレッド、イベントループ、プロセス分離、async/await）とメモリ管理（GC あり／なし）が意図的にばらけるよう選んである。</p>
+
+<div class="panel">
+  <h4>このベンチマークで答えたい問い</h4>
+  <ol>
+    <li>同じCPU割当で、各言語は毎秒どれだけの注文を捌けるか（スループット）</li>
+    <li>応答時間の裾（p95 / 最大）はどこまで伸びるか（SLA設計の根拠）</li>
+    <li>突発トラフィック時にどう劣化するか（スパイク耐性）</li>
+    <li>同じ処理量あたりのCPU・メモリ消費はどれだけ違うか（サーバ単価）</li>
+    <li>1台のホストに3サービスを同居させたとき、どの言語が最も崩れにくいか（集約適性）</li>
+  </ol>
+</div>
+
+<h2>2. スコープ</h2>
+<table>
+  <thead><tr><th>区分</th><th>内容</th></tr></thead>
+  <tbody>
+    <tr><td>対象</td><td>HTTP JSON API サーバとしての性能。CPU計算・JSON入出力・メモリ確保・並行処理を1リクエストに束ねた複合ワークロード。</td></tr>
+    <tr><td>対象言語</td><td>Python / Go / Ruby / TypeScript(Node) / Java / C# / PHP / Rust の8言語。</td></tr>
+    <tr><td>対象外</td><td>データベースI/O、外部API呼び出し、WebSocket、バッチ処理、開発生産性・保守性・採用のしやすさ。<br>※これらは言語選定の重要な判断材料だが、本ベンチマークの計測対象ではない。</td></tr>
+    <tr><td>実行環境</td><td>Docker / Docker Compose v2 が動作する PC 実機または VPS。クラウドセッション上では実測しない（下記 6章）。</td></tr>
+  </tbody>
+</table>
+
+<h2>3. 計測対象アプリケーション仕様（SPEC-API-v1）</h2>
+<p>全8実装は<strong>この仕様に完全準拠</strong>し、同一入力に対して <code>lang</code> フィールドを除き<strong>1バイトも違わない応答</strong>を返さなければならない。1つでも手を抜いていれば速いのは当然で、数値の意味が失われるため。</p>
+
+<h3>3.1 エンドポイント</h3>
+<table>
+  <thead><tr><th>メソッド / パス</th><th>役割</th></tr></thead>
+  <tbody>
+    <tr><td><code>POST /api/v1/score</code></td><td>本計測対象。注文のスコアリング処理。</td></tr>
+    <tr><td><code>GET /healthz</code></td><td>起動完了判定。Docker HEALTHCHECK とベンチ開始待ちに使う。</td></tr>
+    <tr><td><code>GET /metrics</code></td><td>処理済み件数とワーカー情報。動作確認用。</td></tr>
+  </tbody>
+</table>
+
+<h3>3.2 リクエスト / レスポンス</h3>
+<div class="scroll"><pre><code>// リクエスト
+{
+  "order_id": "ORD-1000001",
+  "items": [ { "sku": "SKU-0001", "qty": 3, "unit_price": 1200.55 }, ... ],
+  "customer": { "tier": "gold", "history_days": 400 },
+  "rounds": 200
+}
+
+// レスポンス（200）
+{
+  "order_id": "ORD-1000001", "lang": "go", "item_count": 3,
+  "subtotal": 4016.64, "discount": 602.5, "tax": 341.41, "total": 3755.55,
+  "signature": "ea47560f…", "top_skus": ["SKU-0001","SKU-0003","SKU-0002"], "rounds": 200
+}</code></pre></div>
+
+<h3>3.3 処理手順（この順序と計算式を全8言語で完全に揃える）</h3>
+<ol>
+  <li><strong>JSONデシリアライズ</strong> — フレームワークの自動バリデーション（pydantic、Bean Validation、モデルバインド、extractor など）は使わず、全言語とも手動で解釈する。</li>
+  <li><strong>バリデーション</strong> — <code>order_id</code> 非空、<code>items</code> 非空、全明細で <code>qty &gt; 0</code> かつ <code>unit_price ≧ 0</code>。違反は 400 <code>validation_failed</code>。</li>
+  <li><strong>金額計算</strong> — <code>subtotal = Σ(qty × unit_price)</code> を小数第2位で丸める。</li>
+  <li><strong>割引率</strong> — gold 0.12 / silver 0.07 / その他 0.02。<code>history_days ≧ 365</code> なら +0.03。上限 0.20。</li>
+  <li><strong>税・合計</strong> — <code>tax = (subtotal − discount) × 0.10</code>、<code>total = subtotal − discount + tax</code>。各段で丸める。</li>
+  <li><strong>署名生成（CPU負荷の本体）</strong> — <code>SHA-256("order_id|subtotal")</code> を初期値に、SHA-256 を <code>rounds</code> 回チェーンする。</li>
+  <li><strong>上位SKU抽出</strong> — 明細を金額降順（同額は SKU 昇順）でソートし上位5件。</li>
+  <li><strong>JSONシリアライズ</strong>して返す。</li>
+</ol>
+
+<div class="panel">
+  <h4 class="must">丸めに関する厳守事項</h4>
+  <p>丸めは<strong>「0.5 は絶対値の大きい側へ」</strong>で統一し、全言語で <code>floor(x*100+0.5)/100</code> の式に揃える。標準関数の挙動が言語ごとに違うため、名前が同じでも意味は同じではない。</p>
+  <table>
+    <thead><tr><th>言語</th><th>標準の丸め</th><th>そのまま使った場合</th></tr></thead>
+    <tbody>
+      <tr><td>Python <code>round()</code></td><td>偶数丸め（バンカーズ丸め）</td><td class="must">金額が食い違う</td></tr>
+      <tr><td>C# <code>Math.Round()</code></td><td>偶数丸め（既定）</td><td class="must">金額が食い違う</td></tr>
+      <tr><td>JavaScript <code>Math.round()</code></td><td>0.5 を常に +∞ 側へ</td><td>負値で食い違う</td></tr>
+      <tr><td>Java <code>Math.round()</code></td><td>0.5 を常に +∞ 側へ</td><td>負値で食い違う</td></tr>
+      <tr><td>Go <code>math.Round()</code> / Ruby <code>Float#round</code> / PHP <code>round()</code> / Rust <code>f64::round</code></td><td>0.5 を絶対値の大きい側へ</td><td>一致するが、式を揃えて仕様として固定する</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3>3.4 負荷の可変パラメータ</h3>
+<table>
+  <thead><tr><th>パラメータ</th><th>効果</th><th>既定値</th></tr></thead>
+  <tbody>
+    <tr><td><code>rounds</code></td><td>SHA-256 の反復回数。上げるほど<strong>CPU比重</strong>が増す。</td><td>200</td></tr>
+    <tr><td><code>items</code></td><td>1注文あたりの明細数。上げるほど<strong>JSONパース／メモリ確保／GC比重</strong>が増す。</td><td>12</td></tr>
+    <tr><td><code>vus</code></td><td>同時接続数。上げるほど<strong>並行処理モデルの差</strong>が出る。</td><td>50</td></tr>
+  </tbody>
+</table>
+<p>この3つを振ることで、「CPU寄りの処理」「JSON寄りの処理」「高並行の処理」それぞれで言語の得手不得手を切り分けられる。</p>
+
+<h2>4. 実行環境の要件</h2>
+
+<h3>4.1 各言語の構成</h3>
+<div class="scroll"><table>
+  <thead><tr><th>言語</th><th>ランタイム</th><th>Webサーバ構成</th><th>並行モデル</th><th>メモリ管理</th><th>ポート</th></tr></thead>
+  <tbody>
+    <tr><td>Python</td><td>3.12-slim</td><td>FastAPI + uvicorn（プロセス2）</td><td>async I/O + マルチプロセス（GIL回避）</td><td>参照カウント + GC</td><td>18001</td></tr>
+    <tr><td>Go</td><td>1.22（静的バイナリ / alpine）</td><td>標準 <code>net/http</code></td><td>goroutine（GOMAXPROCS=2）</td><td>並行GC</td><td>18002</td></tr>
+    <tr><td>Ruby</td><td>3.3-slim（YJIT 有効）</td><td>Sinatra + Puma（プロセス2 × スレッド8）</td><td>マルチプロセス + スレッド（GVL制約あり）</td><td>世代別GC</td><td>18003</td></tr>
+    <tr><td>TypeScript</td><td>Node 22-slim</td><td>Fastify + cluster（ワーカー2）</td><td>イベントループ × マルチプロセス</td><td>V8 世代別GC</td><td>18004</td></tr>
+    <tr><td>Java</td><td>Temurin 21（JRE）</td><td>Spring Boot 3 + 仮想スレッド</td><td>仮想スレッド（Project Loom）</td><td>G1GC</td><td>18005</td></tr>
+    <tr><td>C#</td><td>.NET 9（ASP.NET Core ランタイム）</td><td>Minimal API + Kestrel</td><td>async/await + スレッドプール</td><td>サーバGC</td><td>18006</td></tr>
+    <tr><td>PHP</td><td>8.4-fpm-alpine（opcache + JIT）</td><td>nginx + php-fpm（static 8プロセス）</td><td>プロセス分離（リクエストごとに状態リセット）</td><td>リクエスト単位で解放</td><td>18007</td></tr>
+    <tr><td>Rust</td><td>1.83（静的寄りバイナリ / debian-slim）</td><td>Axum + Tokio（ワーカースレッド2）</td><td>async/await（work-stealing）</td><td class="must">GCなし（所有権）</td><td>18008</td></tr>
+  </tbody>
+</table></div>
+<p>いずれも「その言語で商用APIを書くなら普通こうする」という構成を選んだ。最速化のためのチューニング（Cアクセラレータ、代替JSONライブラリ等）は<strong>意図的に入れていない</strong>。素の状態での比較を目的とするため。</p>
+
+<div class="panel">
+  <h4>構成選択で意図的に揃えなかった点</h4>
+  <p><strong>PHP だけは nginx + php-fpm の2段構成になっている。</strong> 他言語のようにアプリ自身がHTTPを話す構成が PHP では一般的でなく、無理に揃えると「商用のPHP」ではなくなるため。この2段構成そのものを PHP の姿として計測する。</p>
+  <p><strong>Java と C# はフレームワーク（Spring Boot / ASP.NET Core）込みで測る。</strong> どちらもフレームワーク無しで商用APIを書くことはまずない。起動時間とメモリ常駐量を含めた実像を見る。</p>
+</div>
+
+<h3>4.2 公平性の担保（<span class="must">これを崩すと計測が無意味になる</span>）</h3>
+<ul>
+  <li><strong>リソース上限を全8コンテナで完全に揃える。</strong> <code>cpus: 2.0</code> / <code>mem_limit: 512m</code>。揃えないと言語差ではなくホストの空き資源差を測ることになる。<strong>CI で機械的に検証している</strong>（下記 7.3）。</li>
+  <li><strong>ワーカー並列度を揃える。</strong> Python workers=2、Go GOMAXPROCS=2、Ruby workers=2、Node cluster=2、Rust tokio worker_threads=2。Java / C# はランタイムがコンテナのCPU上限から自動決定する。PHP は php-fpm を static 8プロセスに固定する。</li>
+  <li><strong>ランタイムにコンテナ上限を認識させる。</strong> JVM は既定でホストのメモリを見に行くため <code>-XX:MaxRAMPercentage=75</code> を指定する。Rust の Tokio も <code>available_parallelism</code> 任せにせず環境変数で明示する。</li>
+  <li><strong>ウォームアップを必ず挟む。</strong> JIT / YJIT / コネクションプール / ページキャッシュが温まる前の数値は捨てる。</li>
+  <li><strong>負荷元はコンテナ名で直接叩く。</strong> ホストの公開ポート経由にすると <code>docker-proxy</code> がボトルネックになり、言語差ではなくポートフォワードの詰まりを測ることになる。</li>
+  <li><strong>ペイロードは固定シードで事前生成する。</strong> 負荷元のリクエスト生成コストが計測に混ざらないようにする。</li>
+  <li><strong>ブラウザ用コンソール（nginx）は計測時に起動しない。</strong> Compose の <code>profiles: ["tools"]</code> で分離する。</li>
+</ul>
+
+<h2>5. 計測設計</h2>
+
+<h3>5.1 負荷フェーズ（1回の実行につき3段）</h3>
+<table>
+  <thead><tr><th>フェーズ</th><th>内容</th><th>目的</th></tr></thead>
+  <tbody>
+    <tr><td>warmup（既定15秒）</td><td>VU = 定常の1/5</td><td>ランタイムを温める。<strong>集計対象外。</strong></td></tr>
+    <tr><td>steady（既定60秒）</td><td>VU 固定（既定50）</td><td><strong>本計測。</strong>言語間比較の主データ。</td></tr>
+    <tr><td>spike（25秒）</td><td>VU を 4倍まで急増させ戻す</td><td>飽和時の劣化の仕方を見る。</td></tr>
+  </tbody>
+</table>
+
+<h3>5.2 実行モード（2種類。両方を1回の run で回す）</h3>
+<table>
+  <thead><tr><th>モード</th><th>やること</th><th>読み取れること</th></tr></thead>
+  <tbody>
+    <tr><td><strong>isolated</strong></td><td>1言語ずつ<strong>単独で</strong>起動して負荷をかける。計測対象以外のコンテナは停止する。</td><td>その言語の<strong>素の性能</strong>。言語選定の主データ。</td></tr>
+    <tr><td><strong>concurrent</strong></td><td>全言語を同時起動し、<strong>共通の壁時計時刻（スタートバリア）</strong>で負荷を一斉に開始する。</td><td>ホストCPUを奪い合う状況での<strong>劣化幅</strong>。1台に複数サービスを同居させる構成の適性。</td></tr>
+  </tbody>
+</table>
+<p>concurrent の数値は isolated より<strong>必ず悪くなる</strong>。単独の絶対値だけを見ても本番の挙動は分からず、同時実行だけを見ても言語の素の力は分からない。<strong>両者を並べて初めて意思決定に使える。</strong></p>
+
+<h3>5.3 同時実行タイマー（スタートバリア）の仕組み</h3>
+<p>負荷コンテナを <code>docker run -d</code> で順に起動しても、コンテナ起動とスクリプト読み込みに数秒のばらつきが出る。ずれたまま走ると「先に始まった言語だけ空いているCPUを使えた」という不公平が生じる。言語が8本に増えると、最初と最後の起動差は無視できない大きさになる。</p>
+<div class="scroll"><pre><code>1. オーケストレータが「現在時刻 + 15秒」を epoch ミリ秒で確定する
+2. 全ての k6 コンテナに同じ値を START_AT 環境変数で渡して起動する
+3. 各 k6 は setup() でその時刻までミリ秒精度で待機する
+4. 全員が同一の壁時計時刻で一斉に負荷を開始する
+5. オーケストレータは docker wait で全本数の終了を待ち、資源サンプラを止める
+
+猶予（--barrier）は起動する言語数に応じて伸ばす。8言語なら 15 秒が既定。
+コンテナ起動が猶予を超えると、遅れた言語だけ負荷開始が欠ける。</code></pre></div>
+
+<h3>5.4 資源使用量の計測</h3>
+<p><code>docker stats</code> を<strong>1秒間隔</strong>でポーリングし、コンテナごとの CPU%・メモリ・ネットワークIO を CSV に落とす。</p>
+<div class="panel">
+  <h4>cAdvisor + Prometheus を使わない理由</h4>
+  <p>監視スタックのほうが精緻だが、<strong>監視スタック自身がホストのCPUを消費して計測対象を歪める</strong>。本ベンチマークは「同じホスト上で公平に比べる」ことが目的なので、観測コストが最小の手段を選んだ。より高精度な計測が必要になった時点で差し替える。</p>
+</div>
+
+<h2>6. 実行場所の分離</h2>
+<table>
+  <thead><tr><th>工程</th><th>実行場所</th></tr></thead>
+  <tbody>
+    <tr><td>設計、コード記述、ロジック一致テスト（<code>make test</code>）</td><td>クラウドセッション可（Docker不要）</td></tr>
+    <tr><td>イメージビルド、負荷計測、レポート生成</td><td><span class="must">PC実機 / VPS のみ</span></td></tr>
+  </tbody>
+</table>
+<p>クラウドセッションのコンテナは CPU 割当が共有かつ変動し、Docker デーモンも常用できない。そこで出した数値は再現性がなく、言語選定の根拠にできない。</p>
+
+<h2>7. 品質保証</h2>
+<h3>7.1 パリティ検証（性能計測の前提条件）</h3>
+<p>計算ロジックは HTTP 層から切り離し（<code>core.py</code> / <code>score.go</code> / <code>core.rb</code> / <code>core.ts</code> / <code>Score.java</code> / <code>Score.cs</code> / <code>Score.php</code> / <code>score.rs</code>）、Python 実装を基準として <code>tests/golden.json</code> に期待値を固定する。他7言語のテストはこのファイルと完全一致することを検証する。</p>
+<ul>
+  <li><code>make test</code> — Docker 不要。全8言語のロジック一致とHTTP層のビルドを検証する。<strong>コード変更時は必ず実行。</strong></li>
+  <li><code>make test-quick</code> — ホストに入っている言語だけ検証し、欠けている言語を「未検証」として明示する。8言語のツールチェーンがローカルに揃っていない場合はこちら。</li>
+  <li><code>make verify</code> — 実際に起動した8サービスへ同一リクエストを投げ、応答の一致を検証する。<strong>計測の直前に実行。</strong></li>
+</ul>
+<div class="panel">
+  <h4 class="must">未検証を黙って飛ばさない</h4>
+  <p><code>make test-quick</code> はツールチェーンの無い言語を SKIP するが、<strong>SKIP した言語を必ず名前付きで報告する</strong>。黙って飛ばすと「テストが通った」と誤解して壊れた実装のまま計測に進む。8言語すべての検証は CI が担保する。</p>
+</div>
+
+<h3>7.3 CI による自動検証</h3>
+<p><code>.github/workflows/lang-bench.yml</code> が PR ごとに以下を自動で検証する。ローカルに8言語のツールチェーンが揃っているのは稀なので、<strong>全言語での検証はここが唯一の場になる</strong>。</p>
+<ol>
+  <li><strong>期待値ファイルの鮮度</strong> — <code>gen_golden.py</code> を再実行して <code>tests/golden.json</code> に差分が出ないことを確認する。Python 実装を変えたのに再生成し忘れると、他言語だけが古い期待値と比較され続けるため。</li>
+  <li><strong>全8言語のロジック一致</strong> — 8つのツールチェーンを用意して <code>run_tests.py</code> を実行する。<strong>SKIP が1つでも出たら失敗させる</strong>（CI 側の不備であり、見逃すとその言語だけ未検証のまま緑になる）。</li>
+  <li><strong>HTTP層のビルド/構文検査</strong> — ロジックテストは <code>core</code> だけを読む。Go / TypeScript / Java / Rust は言語の仕組み上テストがHTTP層まで巻き込んでコンパイルするが、<strong>Python / Ruby / PHP / C# は <code>core</code> しか通らない</strong>。この4つは <code>docker compose build</code> して初めて壊れに気づくことになるため、構文検査（Python / Ruby / PHP）とビルド（C#）を別途通す。</li>
+  <li><strong>Compose 定義の妥当性</strong> — <code>docker compose config</code> が通ること。</li>
+  <li><strong>リソース上限の均一性</strong> — 全サービスの <code>cpus</code> と <code>mem_limit</code> が完全に一致することを機械的に確認する。公平性の根幹なので目視に頼らない。</li>
+</ol>
+
+<h3>7.2 ブラウザからの実行テスト</h3>
+<p><code>make console</code> で <code>http://localhost:18080</code> にコンソールを起動し、ブラウザから疎通確認・パリティ検証・簡易スループット測定を行う。8サービスは nginx リバースプロキシで同一オリジン配下に置き、CORS 設定を計測対象サーバに足さずに済ませている。</p>
+
+<h2>8. 受け入れ基準</h2>
+<ol>
+  <li>CI（<code>lang-bench parity</code>）が緑であること。全8言語のロジック一致とリソース上限の均一性が自動検証される。</li>
+  <li><code>make test</code> が8言語すべてで通ること（ロジック一致）。</li>
+  <li><code>make verify</code> が通ること（起動中の8サービスの応答一致）。</li>
+  <li>ブラウザコンソールの「ヘルスチェック」「パリティ検証」が8言語すべて OK になること。</li>
+  <li><code>make bench</code> が isolated / concurrent の両方を完走し、<code>results/&lt;日時&gt;/report.html</code> が生成されること。</li>
+  <li>レポートに RPS・p50・p95・最大・失敗率・スパイクp95・CPU平均・メモリ最大が8言語分そろい、<code>n/a</code> が無いこと。</li>
+  <li>負荷シナリオの閾値（定常時 失敗率 &lt; 1%、p95 &lt; 1000ms）に対する各言語の合否が判定できること。</li>
+</ol>
+
+<h2>9. 全体計画（フェーズ）</h2>
+<table>
+  <thead><tr><th>フェーズ</th><th>内容</th><th>成果物</th><th>実行場所</th></tr></thead>
+  <tbody>
+    <tr><td>P1 設計</td><td>SPEC-API-v1 策定、計測設計、公平性ルールの確定</td><td>本ドキュメント</td><td>クラウド可</td></tr>
+    <tr><td>P2 実装</td><td>8言語のサービス、負荷シナリオ、オーケストレータ、レポータ</td><td>ソース一式</td><td>クラウド可</td></tr>
+    <tr><td>P3 検証</td><td>ゴールデンテストで8言語のロジック一致を機械的に保証。CI で自動化。</td><td><code>tests/golden.json</code>、各言語テスト、<code>lang-bench.yml</code></td><td>クラウド可</td></tr>
+    <tr><td>P4 実測（基準）</td><td>既定パラメータで <code>make bench</code>。isolated / concurrent 両方。</td><td><code>report.html</code></td><td class="must">PC実機</td></tr>
+    <tr><td>P5 感度分析</td><td><code>rounds</code> / <code>items</code> / <code>vus</code> を振り、CPU寄り・JSON寄り・高並行の各条件で再測</td><td>条件別 <code>report.html</code></td><td class="must">PC実機</td></tr>
+    <tr><td>P6 判断</td><td>結果を突き合わせ、言語選定の根拠として整理</td><td>振り返り.html の更新、Notion への記録</td><td>クラウド可</td></tr>
+  </tbody>
+</table>
+<p>P4 の結果が出るまで P5 の条件は確定しない。基準測定で差が付かなかった軸を振っても情報が得られないため、<strong>P4 → P5 の順序は前後させない。</strong></p>
+
+<h2>10. 想定リスクと対処</h2>
+<table>
+  <thead><tr><th>リスク</th><th>対処</th></tr></thead>
+  <tbody>
+    <tr><td>ホストで別の重い処理が動いていて数値が汚れる</td><td>計測前に他のコンテナ・重いアプリを停止する。<code>manifest.json</code> にホスト論理CPU数を記録し、条件が違う結果同士を比較しない。</td></tr>
+    <tr><td>負荷元（k6）がボトルネックになり、言語差が潰れる</td><td>CPU使用率を確認し、k6 が飽和しているなら VU を下げるか負荷元を別ホストに出す。</td></tr>
+    <tr><td>実装のロジックがいつの間にかずれる</td><td>ゴールデンテストで機械的に検出し、CI で PR ごとに強制する。仕様変更時は8実装を同時に直し <code>make golden</code> で期待値を再生成する。</td></tr>
+    <tr><td>言語が増えて同時実行がホストの容量を超える</td><td>8言語 × 2CPU = 16スレッド分を要求する。ホストが足りない場合は <code>--langs</code> で対象を絞るか、<code>BENCH_CPUS</code> を下げて全言語で揃える。<strong>一部だけ下げてはいけない。</strong></td></tr>
+    <tr><td>Java / C# が 512MB 上限に収まらない</td><td>起動失敗やGC過多になる。<code>BENCH_MEMORY</code> を上げて<strong>全言語で同じ値</strong>にしてから測り直す。</td></tr>
+    <tr><td>1回の結果を過信する</td><td>同条件で最低3回実行し、ばらつきの幅を確認してから判断する。</td></tr>
+    <tr><td>結果ファイルが肥大化する</td><td><code>results/</code> は <code>.gitignore</code> 済み。共有する結果は <code>report.html</code> のみ個別に取り出す。</td></tr>
+  </tbody>
+</table>
+
+</main>
+</body>
+</html>

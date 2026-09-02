@@ -1,0 +1,157 @@
+# 38_lang_bench の8言語が「同じ計算結果を返す」ことを機械的に検証する。
+#
+# 性能比較は全実装が同じ仕事をしていることが唯一の前提であり、
+# ここが崩れた状態で出した数値には意味がない。SPEC-API-v1 を変更したPRで
+# 一部の言語を直し忘れた場合、このワークフローが落ちて気づける。
+#
+# ローカルには8言語のツールチェーンが揃っていないのが普通なので、
+# 全言語を揃えた検証はこのCIが唯一の場になる。
+
+name: lang-bench parity
+
+on:
+  pull_request:
+    paths:
+      - 'projects/38_lang_bench/**'
+      - '.github/workflows/lang-bench.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'projects/38_lang_bench/**'
+      - '.github/workflows/lang-bench.yml'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: projects/38_lang_bench
+
+jobs:
+  parity:
+    name: 全言語ロジック一致・HTTP層ビルド
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Go 1.22
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: projects/38_lang_bench/services/go/go.mod
+
+      - name: Ruby 3.3
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: projects/38_lang_bench/services/node/package-lock.json
+
+      - name: Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust のビルドキャッシュ
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            projects/38_lang_bench/services/rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('projects/38_lang_bench/services/rust/Cargo.lock') }}
+
+      - name: Node の依存をインストール
+        working-directory: projects/38_lang_bench/services/node
+        run: npm ci --no-audit --no-fund
+
+      - name: 期待値ファイルが最新か確認
+        # golden.json は Python 実装から生成される。core.py を変えたのに
+        # 再生成し忘れると、他言語だけが古い期待値と比較され続けてしまう。
+        run: |
+          python3 harness/gen_golden.py
+          git diff --exit-code tests/golden.json \
+            || (echo "::error::tests/golden.json が古い。make golden で再生成してコミットすること。" && exit 1)
+
+      - name: 全言語の検査（ロジック一致 + HTTP層のビルド）
+        # run_tests.py はツールチェーンが無い言語を SKIP して成功扱いにする。
+        # CI では全言語を用意しているので、SKIP が出たらこのワークフロー側の
+        # 不備であり、見逃すと「その言語だけ未検証のまま緑」になる。
+        #
+        # HTTP層の検査が要るのは、ロジックテストが core だけを読むため。
+        # Go / TypeScript / Java / Rust は言語の仕組み上テストがHTTP層まで
+        # 巻き込んでコンパイルするが、Python / Ruby / PHP / C# は core しか
+        # 通らない。実機で docker compose build して初めて落ちるのを防ぐ。
+        run: |
+          set -o pipefail
+          python3 harness/run_tests.py | tee /tmp/parity.log
+          if grep -q '^\[SKIP\]' /tmp/parity.log; then
+            echo "::error::CI で SKIP された言語がある。ツールチェーンのセットアップを見直すこと。"
+            exit 1
+          fi
+
+  compose:
+    name: Compose 定義の検証
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: docker compose config
+        # リソース上限やサービス定義の書き崩れを、ビルドを待たずに検出する
+        run: docker compose config --quiet
+
+      - name: 全サービスのリソース上限が揃っているか確認
+        # 上限が揃っていないと、言語差ではなくホストの空き資源差を測ることになる。
+        # 比較の前提そのものなので、目視ではなくCIで固定する。
+        run: |
+          python3 - <<'PY'
+          import json, subprocess, sys
+
+          # このステップは working-directory が projects/38_lang_bench なので、
+          # docker compose はそのまま同ディレクトリの定義を読む。
+          config = json.loads(subprocess.run(
+              ["docker", "compose", "config", "--format", "json"],
+              capture_output=True, text=True, check=True).stdout)
+
+          limits = {}
+          for name, svc in config["services"].items():
+              if name == "console":
+                  continue
+              limits[name] = (svc.get("cpus"), svc.get("mem_limit"))
+
+          distinct = set(limits.values())
+          if len(distinct) != 1:
+              print("::error::サービス間でリソース上限が揃っていない:")
+              for name, value in sorted(limits.items()):
+                  print(f"  {name}: cpus={value[0]} mem_limit={value[1]}")
+              sys.exit(1)
+          print(f"OK: {len(limits)} サービスすべて {distinct.pop()}")
+          PY

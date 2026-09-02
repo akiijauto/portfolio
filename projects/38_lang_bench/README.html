@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>README — バックエンド言語 性能比較ベンチマーク</title>
+<style>
+  :root { color-scheme: light dark; --fg:#1a1a1a; --bg:#fff; --line:#d8d8d8; --muted:#666; --panel:#f7f7f8; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e8e8e8; --bg:#16181c; --line:#333; --muted:#9aa0a6; --panel:#1e2126; }
+  }
+  body { margin:0; padding:2.5rem 1.25rem 5rem; background:var(--bg); color:var(--fg);
+         font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif; line-height:1.8; }
+  main { max-width:940px; margin:0 auto; }
+  h1 { font-size:1.7rem; margin:0 0 .3rem; }
+  h2 { font-size:1.25rem; margin:2.75rem 0 .6rem; padding-bottom:.35rem; border-bottom:2px solid var(--line); }
+  h3 { font-size:1.02rem; margin:1.9rem 0 .4rem; }
+  .meta { color:var(--muted); font-size:.9rem; margin:0 0 1.5rem; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:.9rem 1.1rem; margin:1rem 0; }
+  .panel h4 { margin:0 0 .4rem; font-size:.95rem; }
+  table { border-collapse:collapse; width:100%; font-size:.9rem; margin:.8rem 0 1.2rem; }
+  th, td { border:1px solid var(--line); padding:.5rem .65rem; text-align:left; vertical-align:top; }
+  thead th { background:var(--panel); font-weight:600; }
+  code { background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:.05rem .3rem; font-size:.86em; }
+  pre { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:.9rem 1rem; overflow-x:auto; font-size:.82rem; line-height:1.6; }
+  pre code { background:none; border:none; padding:0; }
+  ul, ol { padding-left:1.35rem; }
+  li { margin:.25rem 0; }
+  .must { color:#c0392b; font-weight:600; }
+  @media (prefers-color-scheme: dark) { .must { color:#ff8a80; } }
+  .step { counter-reset:none; }
+  .scroll { overflow-x:auto; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>README — バックエンド言語 性能比較ベンチマーク</h1>
+<p class="meta">導入から計測、レポート閲覧までの手順書。仕様の背景は <code>要件定義.html</code>、開発上の課題と解決策は <code>振り返り.html</code> を参照。</p>
+
+<div class="panel">
+  <h4>これは何か</h4>
+  <p><strong>8言語</strong>（Python / Go / Ruby / TypeScript / Java / C# / PHP / Rust）に<strong>完全に同一の業務処理</strong>を実装し、同一のCPU・メモリ上限を課したDockerコンテナ上で、同一の負荷を流して性能を比較する計測基盤。処理完了時間・スループット・応答時間の裾・CPU/メモリ消費を並べて出す。</p>
+  <p><strong>全言語を同時に走らせる同時実行モード</strong>を備え、共通の壁時計時刻（スタートバリア）で一斉にスタートさせることで、リソース競合下での劣化の仕方も測れる。</p>
+</div>
+
+<h2>1. 前提条件</h2>
+<table>
+  <thead><tr><th>必要なもの</th><th>バージョン</th><th>確認コマンド</th></tr></thead>
+  <tbody>
+    <tr><td>Docker Engine</td><td>24 以降</td><td><code>docker info</code></td></tr>
+    <tr><td>Docker Compose</td><td>v2 系</td><td><code>docker compose version</code></td></tr>
+    <tr><td>Python</td><td>3.10 以降（オーケストレータ用。標準ライブラリのみ）</td><td><code>python3 --version</code></td></tr>
+    <tr><td>make</td><td>任意（無くても直接コマンドを打てる）</td><td><code>make --version</code></td></tr>
+  </tbody>
+</table>
+<h3>1.1 リソース</h3>
+<table>
+  <thead><tr><th>モード</th><th>必要な論理CPU</th><th>必要な空きメモリ</th></tr></thead>
+  <tbody>
+    <tr><td>isolated のみ（1言語ずつ）</td><td>4コア以上</td><td>2GB 以上</td></tr>
+    <tr><td>concurrent（8言語同時）</td><td><strong>18コア以上を推奨</strong>（8コンテナ × 2CPU + 負荷生成）</td><td><strong>6GB 以上</strong></td></tr>
+  </tbody>
+</table>
+<p>ホストが足りない場合は <code>--langs</code> で言語を絞るか、<code>BENCH_CPUS</code> を下げる。<strong>下げるときは全言語で同じ値にすること</strong>（一部だけ下げると比較が壊れる）。</p>
+
+<h3>1.2 使用ポート</h3>
+<div class="scroll"><table>
+  <thead><tr><th>ポート</th><th>言語</th><th>ポート</th><th>言語</th></tr></thead>
+  <tbody>
+    <tr><td><code>18001</code></td><td>Python</td><td><code>18005</code></td><td>Java</td></tr>
+    <tr><td><code>18002</code></td><td>Go</td><td><code>18006</code></td><td>C#</td></tr>
+    <tr><td><code>18003</code></td><td>Ruby</td><td><code>18007</code></td><td>PHP</td></tr>
+    <tr><td><code>18004</code></td><td>TypeScript</td><td><code>18008</code></td><td>Rust</td></tr>
+    <tr><td colspan="4"><code>18080</code> — ブラウザ実行テスト用コンソール</td></tr>
+  </tbody>
+</table></div>
+
+<h3>1.3 ホストに言語処理系は要るか</h3>
+<p><strong>計測だけなら不要。</strong> 8言語すべてコンテナ内でビルドされる。</p>
+<p>ただし <code>make test</code>（ロジック一致テストとHTTP層の検査）はホストの処理系を使うため、フルで走らせるには <code>go</code> / <code>ruby</code> / <code>npm</code> / <code>mvn</code> / <code>php</code> / <code>cargo</code> / <code>dotnet</code> が必要になる。<strong>揃っていないのが普通</strong>なので、ローカルでは <code>make test-quick</code>（入っている言語だけ検証し、欠けている言語を明示的に報告する）を使い、8言語すべての検証は CI に任せる。</p>
+
+<div class="panel">
+  <h4 class="must">実行場所に関する注意</h4>
+  <p>計測は<strong>PC実機または専用VPSでのみ</strong>行うこと。クラウド開発セッションはCPU割当が共有かつ変動し、そこで出した数値は再現性がないため言語選定の根拠にできない。</p>
+</div>
+
+<h2>1.4 Windows での実行</h2>
+<div class="panel">
+  <h4 class="must">Windows ネイティブ（PowerShell / コマンドプロンプト）では動かない</h4>
+  <p>本プロジェクトのコマンドは Linux/macOS シェル前提で、Windows では以下が引っかかる。<strong>WSL2 上で実行すること。</strong></p>
+</div>
+<table>
+  <thead><tr><th>箇所</th><th>Windows ネイティブでの問題</th></tr></thead>
+  <tbody>
+    <tr><td><code>make</code></td><td>標準で入っていない</td></tr>
+    <tr><td><code>nproc</code></td><td>存在しない（<code>echo %NUMBER_OF_PROCESSORS%</code> が相当）</td></tr>
+    <tr><td><code>BENCH_CPUS=1.0 make bench</code></td><td>環境変数の前置きは POSIX シェル構文。PowerShell では <code>$env:BENCH_CPUS="1.0"</code></td></tr>
+    <tr><td><code>python3</code></td><td>通常は <code>python</code></td></tr>
+    <tr><td>Makefile 内の <code>grep</code> / <code>awk</code> / <code>read -p</code></td><td>Unix ツール前提</td></tr>
+  </tbody>
+</table>
+<p><strong>計測の妥当性は WSL2 でも変わらない。</strong> 計測対象は Linux コンテナであり、Docker Desktop はもともと WSL2 をバックエンドに使っているため、ネイティブ実行と同じコンテナが同じように走る。</p>
+
+<h3>WSL2 での手順</h3>
+<div class="scroll"><pre><code># 1) WSL2 の確認（未導入なら PowerShell を管理者で開いて wsl --install）
+wsl -l -v
+
+# 2) Docker Desktop の設定
+#    Settings → Resources → WSL Integration で使用するディストリビューションを有効にする
+
+# 3) WSL のシェルに入り、必要なら make を入れる
+wsl
+sudo apt-get update &amp;&amp; sudo apt-get install -y make
+
+# 4) 以降は本書の手順どおり
+cd /mnt/c/&lt;リポジトリを置いた場所&gt;/portfolio/projects/38_lang_bench
+make test-quick</code></pre></div>
+
+<div class="panel">
+  <h4>リポジトリの置き場所に注意</h4>
+  <p><code>/mnt/c/...</code>（Windows 側のディスク）に置くとファイルI/Oが遅く、ビルド時間が大きく伸びる。可能なら <strong>WSL のホームディレクトリ配下（<code>~/portfolio</code>）にクローンする</strong>ほうが速い。ただし計測されるのはコンテナ内のCPU処理なので、ビルドが遅いだけで<strong>計測値そのものは変わらない</strong>。</p>
+</div>
+
+<h3>make を使わない場合</h3>
+<p><code>make</code> が使えない環境では、Makefile の各ターゲットの中身をそのまま打てばよい。</p>
+<div class="scroll"><pre><code>python3 harness/run_tests.py                      # make test-quick 相当
+docker compose build                              # make build 相当
+docker compose --profile tools up -d py go rb ts java cs php rs console   # make console 相当
+python3 harness/verify_parity.py                  # make verify 相当
+python3 harness/bench.py --mode both              # make bench 相当
+docker compose --profile tools down --remove-orphans   # make down 相当</code></pre></div>
+
+<h2>2. セットアップ</h2>
+<div class="scroll"><pre><code>cd portfolio/projects/38_lang_bench
+
+# 1) ロジック一致テスト（Docker不要）
+make test-quick   # ホストに入っている言語だけ検査（ロジック一致 + HTTP層）。数秒〜1分
+make test         # 8言語すべて。全処理系が入っている場合のみ
+
+# 2) 8言語のイメージをビルド（初回は15〜30分程度）
+make build</code></pre></div>
+<p><code>make</code> を使わない場合:</p>
+<div class="scroll"><pre><code>python3 harness/run_tests.py    # 入っている言語だけ検査（ロジック一致 + HTTP層）
+docker compose build</code></pre></div>
+<p>初回ビルドは Rust の <code>cargo build --release</code>（LTO 有効）と Java の Maven 依存解決が支配的。2回目以降は Docker のレイヤキャッシュが効くため大幅に速くなる。</p>
+
+<h2>3. 動作確認</h2>
+
+<h3>3.1 CLI での確認</h3>
+<div class="scroll"><pre><code>make up          # 8サービスを起動
+make verify      # 8実装が同じ計算結果を返すか検証
+</code></pre></div>
+<p><code>make verify</code> は8サービスに同一リクエストを投げ、<code>lang</code> フィールドを除く応答が完全一致するかを確認する。<strong>ここが通らない状態で性能を測っても意味がない</strong>ので、先に原因を潰すこと。</p>
+
+<h3>3.2 ブラウザからの実行テスト</h3>
+<div class="scroll"><pre><code>make console     # 8サービス + コンソール(nginx) を起動
+</code></pre></div>
+<p>ブラウザで <strong><code>http://localhost:18080</code></strong> を開き、上から順に実行する。</p>
+<table>
+  <thead><tr><th>ボタン</th><th>確認できること</th></tr></thead>
+  <tbody>
+    <tr><td>1. ヘルスチェック</td><td>8サービスが起動し応答しているか</td></tr>
+    <tr><td>2. パリティ検証</td><td>8実装が同じ金額・同じ署名を返すか（Python基準で比較）</td></tr>
+    <tr><td>3. 簡易スループット測定</td><td>並列度1での逐次応答時間の傾向。絶対値は本計測と一致しない</td></tr>
+  </tbody>
+</table>
+<p>コンソールは nginx リバースプロキシ経由で8サービスを同一オリジン配下に置いている。<strong>本計測時には起動しない</strong>（Compose の <code>profiles: ["tools"]</code> で分離済み）。</p>
+
+<h3>3.3 単発リクエストで確認する場合</h3>
+<div class="scroll"><pre><code>curl -s -X POST http://localhost:18002/api/v1/score \
+  -H 'Content-Type: application/json' \
+  -d '{"order_id":"ORD-1","items":[{"sku":"SKU-1","qty":2,"unit_price":1500.5}],
+       "customer":{"tier":"gold","history_days":400},"rounds":200}'</code></pre></div>
+<p>ポートを <code>18001</code>〜<code>18008</code> のどれに変えても、<code>lang</code> 以外は同じ応答が返るはず。</p>
+
+<h2>4. 計測の実行</h2>
+
+<h3>4.1 まず短縮版で通す</h3>
+<div class="scroll"><pre><code>make down    # 動作確認で起動したコンテナを止める
+make quick   # 約5分。全工程が通ることの確認用
+</code></pre></div>
+
+<h3>4.2 本計測</h3>
+<div class="scroll"><pre><code>make bench   # 8言語で約20分。isolated（単独）と concurrent（全言語同時）の両方
+
+# ホストが小さい場合は言語を絞る
+python3 harness/bench.py --mode both --langs go rs java py
+</code></pre></div>
+<p>実行の流れ:</p>
+<ol>
+  <li>前提チェック（docker / compose / デーモン接続）</li>
+  <li>イメージビルド、k6 イメージ取得</li>
+  <li><strong>isolated</strong>: 1言語ずつ単独起動 → healthz 待ち → 3秒安定待ち → 資源サンプラ起動 → 負荷実行 → 停止。これを言語数ぶん繰り返す。</li>
+  <li><strong>concurrent</strong>: 全言語同時起動 → healthz 待ち → スタートバリア時刻を確定 → 全ての k6 を起動 → 一斉スタート → 全終了待ち</li>
+  <li>生データを <code>results/&lt;日時&gt;/</code> に保存し、<code>report.html</code> を生成</li>
+</ol>
+
+<h3>4.3 パラメータを変えて測る</h3>
+<div class="scroll"><pre><code># CPU寄りの負荷（署名の反復を10倍に）
+python3 harness/bench.py --mode both --rounds 2000
+
+# JSON/メモリ寄りの負荷（明細を10倍に）
+python3 harness/bench.py --mode both --items 120
+
+# 高並行（同時接続数を4倍に）
+python3 harness/bench.py --mode both --vus 200
+
+# 同時実行だけ／長めに
+python3 harness/bench.py --mode concurrent --steady 180s</code></pre></div>
+<table>
+  <thead><tr><th>オプション</th><th>意味</th><th>既定</th></tr></thead>
+  <tbody>
+    <tr><td><code>--mode</code></td><td><code>isolated</code> / <code>concurrent</code> / <code>both</code></td><td>both</td></tr>
+    <tr><td><code>--langs</code></td><td>対象言語（<code>py go rb ts java cs php rs</code> から選ぶ）</td><td>全8言語</td></tr>
+    <tr><td><code>--vus</code></td><td>定常負荷の同時接続数</td><td>50</td></tr>
+    <tr><td><code>--rounds</code></td><td>1リクエストあたりのSHA-256反復数（CPU比重）</td><td>200</td></tr>
+    <tr><td><code>--items</code></td><td>1注文あたりの明細数（JSON/メモリ比重）</td><td>12</td></tr>
+    <tr><td><code>--warmup</code> / <code>--steady</code></td><td>各フェーズの長さ</td><td>15s / 60s</td></tr>
+    <tr><td><code>--barrier</code></td><td>同時実行のスタートバリアまでの猶予秒。言語を増やすほど長くする</td><td>15.0</td></tr>
+    <tr><td><code>--skip-build</code></td><td>ビルドを飛ばす（2回目以降）</td><td>—</td></tr>
+  </tbody>
+</table>
+<p>コンテナのリソース上限は環境変数で変えられる。<strong>全言語で必ず同じ値にすること。</strong>compose の共通アンカーで一括適用されるため、通常は個別に触る必要はない。</p>
+<div class="scroll"><pre><code>BENCH_CPUS=4.0 BENCH_MEMORY=1g BENCH_WORKERS=4 make bench</code></pre></div>
+<p>Java（Spring Boot）と C#（ASP.NET Core）は常駐メモリが大きい。既定の 512MB で起動に失敗する場合は <code>BENCH_MEMORY</code> を上げて<strong>全言語で同じ値</strong>にしてから測り直すこと。片方だけ上げると比較が成立しない。</p>
+
+<h2>5. 結果の見方</h2>
+<p>計測が終わると <code>results/&lt;日時&gt;/report.html</code> が生成される。ブラウザで開く。</p>
+<table>
+  <thead><tr><th>指標</th><th>読み方</th></tr></thead>
+  <tbody>
+    <tr><td>スループット RPS</td><td>同じ同時接続数で捌けた秒間リクエスト数。<strong>高いほど良い。</strong>処理1件あたりの所要時間の逆数に近い。</td></tr>
+    <tr><td>p50 / p95 / 最大 (ms)</td><td>応答時間。<strong>平均より p95 と最大が重要</strong>。商用SLAは平均ではなく裾で切られる。</td></tr>
+    <tr><td>失敗率</td><td>定常時に1%を超えるなら、その言語はその負荷に耐えていない。</td></tr>
+    <tr><td>スパイク p95</td><td>定常 p95 から大きく跳ねる言語は突発トラフィックに弱い。</td></tr>
+    <tr><td>CPU平均</td><td>上位50%サンプルの平均（アイドル区間を除外）。<strong>同じRPSならCPUが低いほうがサーバ単価が安い。</strong></td></tr>
+    <tr><td>メモリ最大</td><td>コンテナのピークRSS。上限512MBに張り付いていないかを確認する。</td></tr>
+  </tbody>
+</table>
+<div class="panel">
+  <h4>単独と同時、両方を見る</h4>
+  <p>同時実行の数値は単独より<strong>必ず悪くなる</strong>。見るべきはその<strong>劣化幅</strong>で、幅が小さい言語ほど1台のホストに複数サービスを同居させる構成に向く。単独の絶対値だけでは本番の挙動は分からない。</p>
+</div>
+
+<h3>生データ</h3>
+<table>
+  <thead><tr><th>ファイル</th><th>内容</th></tr></thead>
+  <tbody>
+    <tr><td><code>manifest.json</code></td><td>実行パラメータ、ホスト情報、壁時計時間</td></tr>
+    <tr><td><code>k6-{py,go,rb}.json</code></td><td>単独実行のレイテンシ・スループット全指標</td></tr>
+    <tr><td><code>concurrent/k6-*.json</code></td><td>同時実行時の同上</td></tr>
+    <tr><td><code>resource-*.csv</code></td><td>1秒刻みのCPU・メモリ・ネットワーク時系列</td></tr>
+  </tbody>
+</table>
+<p><code>results/</code> は <code>.gitignore</code> 済み。共有したい結果は <code>report.html</code> を個別に取り出すこと。</p>
+<p>レポートだけ作り直したい場合: <code>make report</code>（最新の結果ディレクトリを対象にする）。特定の結果を指定する場合は <code>python3 harness/report.py results/20260902-100000</code>。</p>
+
+<h2>6. 計測の信頼性を保つために</h2>
+<ol>
+  <li><strong>計測前に他の重い処理を止める。</strong> ブラウザの重いタブ、他のコンテナ、バックアップ処理など。</li>
+  <li><strong>同条件で最低3回走らせる。</strong> 1回の結果で判断しない。ばらつきの幅を見てから結論を出す。</li>
+  <li><strong>条件の違う結果を並べない。</strong> <code>manifest.json</code> のパラメータとホスト論理CPU数が一致する結果同士だけを比較する。</li>
+  <li><strong>コードを触ったら <code>make test</code>（または <code>make test-quick</code> + CI）。</strong> 実装のロジックがずれた状態の計測は無意味。</li>
+  <li><strong>ノートPCは電源接続で。</strong> バッテリー駆動だとCPU周波数が絞られ、実行のたびに条件が変わる。</li>
+</ol>
+
+<h2>7. トラブルシューティング</h2>
+<table>
+  <thead><tr><th>症状</th><th>原因と対処</th></tr></thead>
+  <tbody>
+    <tr><td><code>[FATAL] docker デーモンに接続できない</code></td><td>Docker Desktop / dockerd が起動していない。起動してから再実行する。</td></tr>
+    <tr><td><code>[FATAL] 起動待ちタイムアウト</code></td><td>サービスが healthy にならない。<code>docker compose logs py go rb</code> で原因を確認する。ビルド失敗やポート競合が多い。</td></tr>
+    <tr><td>ポートが使用中というエラー</td><td>18001〜18003 / 18080 が他プロセスに取られている。<code>docker-compose.yml</code> の <code>ports</code> を変更する。</td></tr>
+    <tr><td>k6 の終了コードが 99</td><td>異常ではなく<strong>閾値未達</strong>。その言語がその負荷条件で受け入れ基準を満たさなかったということ。結果は正常に記録されている。</td></tr>
+    <tr><td>全言語の RPS が不自然に近い</td><td>負荷元（k6）が飽和している可能性。<code>--vus</code> を下げるか、負荷元を別ホストに出す。</td></tr>
+    <tr><td>レポートの値が <code>n/a</code> だらけ</td><td><code>loadgen/scenario.js</code> の <code>thresholds</code> からサブメトリクスの宣言が消えている。宣言したタグ付きメトリクスしか集計に現れない。</td></tr>
+    <tr><td><code>make test</code> でどれかの言語が落ちる</td><td>実装のロジックがずれている。仕様を変えたなら <code>make golden</code> で期待値を再生成し、<strong>8実装すべて</strong>を直す。</td></tr>
+    <tr><td><code>make test</code> が途中で止まる</td><td>その言語のツールチェーンがホストに無い。<code>make test-quick</code> を使う（欠けている言語を報告して続行する）。</td></tr>
+    <tr><td>CI が「golden.json が古い」で落ちる</td><td><code>services/python/core.py</code> を変えたのに期待値を再生成していない。<code>make golden</code> を実行してコミットする。</td></tr>
+    <tr><td>Java / C# コンテナが起動しない</td><td>メモリ上限が足りない可能性が高い。<code>docker compose logs java cs</code> を確認し、<code>BENCH_MEMORY</code> を全言語で引き上げる。</td></tr>
+    <tr><td>concurrent モードで一部の言語だけ結果が欠ける</td><td>コンテナ起動がスタートバリアに間に合っていない。<code>--barrier</code> を伸ばす。</td></tr>
+    <tr><td>Rust / Ruby のビルドが遅い</td><td>Rust は LTO 有効の release ビルド、Ruby はネイティブ拡張のコンパイルによるもの。いずれも初回のみ。</td></tr>
+  </tbody>
+</table>
+
+<h2>8. 片付け</h2>
+<div class="scroll"><pre><code>make down                    # コンテナを停止・削除
+docker compose down --rmi local   # イメージも削除する場合</code></pre></div>
+<p><code>make clean</code> は <code>results/</code> 配下の計測結果を削除する。<strong>実行前に必要な結果を退避したか確認すること</strong>（確認プロンプトが出る）。</p>
+
+<h2>9. CI（GitHub Actions）</h2>
+<p><code>.github/workflows/lang-bench.yml</code> が、このプロジェクトに触る PR で自動的に走る。</p>
+<table>
+  <thead><tr><th>ジョブ / ステップ</th><th>検証内容</th></tr></thead>
+  <tbody>
+    <tr><td>期待値ファイルの鮮度</td><td><code>gen_golden.py</code> を再実行し <code>tests/golden.json</code> に差分が出ないこと。Python 実装を変えて再生成し忘れると、他言語だけが古い期待値と比較され続けるため。</td></tr>
+    <tr><td>全8言語のロジック一致</td><td>8つのツールチェーンを用意して <code>run_tests.py</code> を実行。<strong>SKIP が1つでも出たら失敗</strong>させる（見逃すとその言語だけ未検証のまま緑になる）。</td></tr>
+    <tr><td>HTTP層のビルド/構文検査</td><td>ロジックテストは <code>core</code> しか読まない。Go / TypeScript / Java / Rust はテストがHTTP層まで巻き込んでコンパイルするが、<strong>Python / Ruby / PHP / C# は <code>core</code> しか通らない</strong>。この4つを別途検査し、実機ビルドで初めて落ちるのを防ぐ。</td></tr>
+    <tr><td>Compose 定義の検証</td><td><code>docker compose config</code> が通ること。</td></tr>
+    <tr><td>リソース上限の均一性</td><td>全サービスの <code>cpus</code> / <code>mem_limit</code> が完全一致すること。公平性の根幹なので目視に頼らない。</td></tr>
+  </tbody>
+</table>
+<p>ローカルに8言語すべてのツールチェーンが揃っていることは稀なので、<strong>全言語での検証はこの CI が唯一の場になる</strong>。手元では <code>make test-quick</code> で回し、最終的な担保は CI の緑で確認する。</p>
+
+<h2>10. ディレクトリ構成</h2>
+<div class="scroll"><pre><code>38_lang_bench/
+├── 要件定義.html            仕様・計測設計・全体計画
+├── README.html              本書（導入と実行手順）
+├── 振り返り.html            開発で起きた課題と解決策
+├── Makefile                 主要コマンド一式
+├── docker-compose.yml       3サービス + コンソールの定義（リソース上限を統一）
+├── services/
+│   ├── python/  core.py   app.py       （テストは tests/ 配下）  Dockerfile
+│   ├── go/      score.go  main.go      score_test.go            Dockerfile
+│   ├── ruby/    core.rb   app.rb       test_core.rb             Dockerfile
+│   ├── node/    src/core.ts  src/server.ts  test/core.test.ts   Dockerfile
+│   ├── java/    Score.java   App.java      ScoreTest.java       Dockerfile
+│   ├── csharp/  Score.cs     Program.cs    tests/Program.cs     Dockerfile
+│   ├── php/     src/Score.php  public/index.php  tests/         Dockerfile
+│   └── rust/    src/score.rs   src/main.rs   tests/golden.rs    Dockerfile
+├── loadgen/scenario.js      k6 負荷シナリオ（3フェーズ + スタートバリア）
+├── console/                 ブラウザ実行テスト用コンソールと nginx 設定
+├── harness/
+│   ├── bench.py             オーケストレータ（isolated / concurrent）
+│   ├── collector.py         資源使用量サンプラ（1秒間隔）
+│   ├── report.py            report.html 生成
+│   ├── verify_parity.py     起動中サービスの応答一致検証
+│   ├── run_tests.py         入っている言語だけロジック一致テストを実行
+│   └── gen_golden.py        期待値ファイル生成
+├── tests/  golden.json      8言語共通の期待値（Python実装が基準）
+└── results/                 計測結果（.gitignore 済み）</code></pre></div>
+
+</main>
+</body>
+</html>
