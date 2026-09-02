@@ -1,0 +1,4 @@
+# 計測結果は実行環境ごとに変わる生成物。リポジトリには置かない。
+# 共有したい結果は results/<timestamp>/report.html を個別に取り出すこと。
+results/*
+!results/.gitkeep

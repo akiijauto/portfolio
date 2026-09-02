@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>振り返り — Python / Go / Ruby 性能比較ベンチマーク</title>
+<style>
+  :root { color-scheme: light dark; --fg:#1a1a1a; --bg:#fff; --line:#d8d8d8; --muted:#666; --panel:#f7f7f8; --warn:#c0392b; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e8e8e8; --bg:#16181c; --line:#333; --muted:#9aa0a6; --panel:#1e2126; --warn:#ff8a80; }
+  }
+  body { margin:0; padding:2.5rem 1.25rem 5rem; background:var(--bg); color:var(--fg);
+         font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif; line-height:1.8; }
+  main { max-width:940px; margin:0 auto; }
+  h1 { font-size:1.7rem; margin:0 0 .3rem; }
+  h2 { font-size:1.25rem; margin:2.75rem 0 .6rem; padding-bottom:.35rem; border-bottom:2px solid var(--line); }
+  h3 { font-size:1.02rem; margin:2rem 0 .4rem; }
+  .meta { color:var(--muted); font-size:.9rem; margin:0 0 1.5rem; }
+  .case { border:1px solid var(--line); border-radius:10px; padding:1rem 1.2rem; margin:1.2rem 0; background:var(--panel); }
+  .case h3 { margin-top:0; }
+  .case dl { margin:0; }
+  .case dt { font-weight:600; font-size:.85rem; color:var(--muted); margin-top:.7rem; letter-spacing:.02em; }
+  .case dd { margin:.15rem 0 0; }
+  .tag { display:inline-block; font-size:.72rem; padding:.1rem .5rem; border-radius:999px;
+         border:1px solid var(--line); background:var(--bg); color:var(--muted); margin-left:.5rem; vertical-align:.15em; }
+  code { background:var(--bg); border:1px solid var(--line); border-radius:4px; padding:.05rem .3rem; font-size:.86em; }
+  pre { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:.8rem 1rem; overflow-x:auto; font-size:.8rem; line-height:1.6; }
+  pre code { background:none; border:none; padding:0; }
+  table { border-collapse:collapse; width:100%; font-size:.9rem; margin:.8rem 0 1.2rem; }
+  th, td { border:1px solid var(--line); padding:.5rem .65rem; text-align:left; vertical-align:top; }
+  thead th { background:var(--panel); font-weight:600; }
+  ul, ol { padding-left:1.35rem; }
+  li { margin:.25rem 0; }
+  .lesson { border-left:4px solid var(--warn); padding-left:.9rem; margin:.8rem 0 0; }
+  .lesson strong { color:var(--warn); }
+  .scroll { overflow-x:auto; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>振り返り — Python / Go / Ruby 性能比較ベンチマーク</h1>
+<p class="meta">開発中に実際にぶつかった課題と、その解決策。次に同種のベンチマークを作るときに繰り返さないための記録。<br>作成日: 2026-09-02 ／ 対象: <code>portfolio/projects/38_lang_bench</code></p>
+
+<h2>総括</h2>
+<p>このプロジェクトで一番時間を使ったのは、3言語のコードを書くことではなく<strong>「3つが本当に同じ仕事をしていると証明すること」</strong>と<strong>「計測が言語以外の要因で汚れないようにすること」</strong>だった。ベンチマークの価値は数値の精度ではなく、<strong>その数値が何を比べているかを説明できるかどうか</strong>にある。</p>
+
+<h2>課題と解決策</h2>
+
+<div class="case">
+<h3>1. Python の round() が偶数丸めで、3言語の金額が食い違った<span class="tag">正確性</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>同一の注文データに対し、Python だけが Go / Ruby と異なる合計金額を返した。<code>round(2.675, 2)</code> が Python では <code>2.67</code>、Go の <code>math.Round</code> と Ruby の <code>Float#round</code> では <code>2.68</code> になる。</dd>
+  <dt>原因</dt>
+  <dd>Python の組み込み <code>round()</code> は「0.5 を偶数側へ」丸めるバンカーズ丸め。Go / Ruby は「0.5 を絶対値の大きい側へ」丸める。<strong>言語の標準関数の名前が同じでも意味が同じとは限らない。</strong></dd>
+  <dt>対処</dt>
+  <dd>Python 側で明示的に <code>math.floor(x*100+0.5)/100</code> を実装し、丸め方を仕様として固定した。加えて「Python の round は偶数丸めなので使えない」という理由をコード内コメントとテストの両方に残した。
+  <div class="scroll"><pre><code>def round2(value: float) -> float:
+    """Go の math.Round / Ruby の Float#round と同じ「0.5は絶対値の大きい側へ」。
+    組み込みの round() は偶数丸めなので、そのまま使うと3実装で金額が食い違う。"""
+    if value >= 0:
+        return math.floor(value * 100 + 0.5) / 100
+    return -(math.floor(-value * 100 + 0.5) / 100)</code></pre></div></dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 複数言語で同一ロジックを実装するときは、丸め・ソートの安定性・辞書の順序・整数除算の符号といった「暗黙の仕様」が最初に破綻する。処理の流れではなく<strong>境界値</strong>から先にテストを書く。</p>
+</div>
+
+<div class="case">
+<h3>2. 「3実装が同じ仕事をしている」保証が無いまま計測しかけた<span class="tag">設計</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>当初は計算ロジックを各言語の HTTP ハンドラの中に直接書いていた。この状態では、実装差を検出するには実際にサーバを3本起動して叩くしかなく、Docker が使えない環境では検証できなかった。</dd>
+  <dt>なぜ問題か</dt>
+  <dd>性能比較は「同じ仕事をさせている」ことが唯一の前提。片方が手を抜いていれば速いのは当たり前で、数値は無意味になる。この前提の検証コストが高いと、<strong>忙しいときに検証が省かれて壊れた比較が残る。</strong></dd>
+  <dt>対処</dt>
+  <dd>計算ロジックを HTTP 層から切り離した（<code>core.py</code> / <code>score.go</code> / <code>core.rb</code>）。Python 実装を基準として期待値を <code>tests/golden.json</code> に固定し、Go と Ruby のテストが同じファイルを読んで完全一致を検証する構成にした。<strong>Docker もサーバ起動も不要で、数秒で3言語の一致が確認できる。</strong>署名（SHA-256 の200回チェーン）まで含めて一致することを機械的に保証している。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> ベンチマークにおける「同一性の検証」は付随的なテストではなく<strong>主要機能</strong>。検証を安く速くする設計に投資すると、以後すべての計測結果の信頼性が上がる。</p>
+</div>
+
+<div class="case">
+<h3>3. k6 のフェーズ別集計ができず、ウォームアップの遅さが本計測に混ざった<span class="tag">計測</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>ウォームアップ・定常・スパイクの3フェーズを1つのシナリオで走らせたところ、サマリが全フェーズ合算の数値しか出さなかった。ウォームアップ中の遅いリクエストが p95 を押し上げ、特に JIT を持つ Ruby が不当に不利になった。</dd>
+  <dt>原因</dt>
+  <dd>k6 はタグ付きサブメトリクスを自動では集計しない。<strong><code>thresholds</code> に書いたサブメトリクスだけが</strong> サマリの <code>data.metrics</code> に現れる、という仕様を把握していなかった。</dd>
+  <dt>対処</dt>
+  <dd>フェーズ別に見たい指標をすべて <code>thresholds</code> に宣言し、<code>handleSummary()</code> で JSON に書き出すようにした。閾値が「受け入れ基準」と「サブメトリクスの宣言」を兼ねている点をコメントで明記し、うっかり消すとレポートが空になることを警告した。
+  <div class="scroll"><pre><code>// thresholds は受け入れ基準であると同時に「サブメトリクスの宣言」でもある。
+// ここに書いたタグ付きメトリクスだけが handleSummary の data.metrics に現れる。
+thresholds: {
+  'http_req_duration{phase:steady}': ['p(95)&lt;1000'],
+  'http_reqs{phase:steady}':         ['count&gt;0'],
+  ...
+}</code></pre></div></dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 計測ツールは「取得したデータ」と「出力するデータ」が一致しない。<strong>欲しい数値がレポートに出るところまでを最初に一度通す</strong>べきで、負荷シナリオを作り込んでから集計方法を考えると作り直しになる。</p>
+</div>
+
+<div class="case">
+<h3>4. 負荷をホストの公開ポート経由でかけ、docker-proxy がボトルネックになった<span class="tag">計測</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>初期案では <code>http://localhost:18001</code> のようにホスト公開ポートへ負荷をかける想定だった。この経路では全トラフィックが <code>docker-proxy</code> を通り、高負荷時にはそこが詰まって<strong>3言語とも似たような数値に収束してしまう</strong>。</dd>
+  <dt>対処</dt>
+  <dd>負荷生成コンテナを計測対象と同じ Docker ネットワークに参加させ、<code>http://bench-go:8000</code> のようにコンテナ名で直接叩く構成にした。ホスト公開ポートは動作確認とブラウザテスト専用と位置づけた。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 差が出ないときは「差が無い」ではなく<strong>「経路上の別の何かで頭打ちになっている」</strong>を先に疑う。計測対象より手前に共通のボトルネックがあると、あらゆる比較が潰れる。</p>
+</div>
+
+<div class="case">
+<h3>5. 3言語同時実行の開始タイミングがずれ、先に始まった言語が有利になった<span class="tag">公平性</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>3本の負荷コンテナを順に <code>docker run -d</code> で起動すると、コンテナ生成とスクリプト読み込みに数秒のばらつきが出る。最初に始まった言語は空いている CPU を独占でき、最後の言語は最初から競合状態で走ることになる。<strong>これでは同時実行を測る意味がない。</strong></dd>
+  <dt>対処</dt>
+  <dd>スタートバリアを実装した。オーケストレータが「現在時刻 + 8秒」を epoch ミリ秒で確定し、3本すべてに同じ値を <code>START_AT</code> として渡す。各負荷スクリプトは <code>setup()</code> でその時刻まで待ってから走り出す。ユーザ要望の「3つの Docker を同時に動かすタイマー」はこの仕組みで実現している。</dd>
+  <dt>実装上の注意</dt>
+  <dd>k6 の <code>sleep()</code> は秒単位なので、ミリ秒精度を出すためにビジーウェイトにした。待機は負荷開始前なので計測値には影響しない。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 「同時に動かす」は「同時に起動コマンドを打つ」ではない。<strong>比較したい条件を揃えるには、揃えるための仕掛けを明示的に作る</strong>必要がある。</p>
+</div>
+
+<div class="case">
+<h3>6. 監視スタックを入れようとして、観測が観測対象を歪めることに気づいた<span class="tag">計測</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>資源使用量の計測に cAdvisor + Prometheus + Grafana を立てる案を検討した。時系列の精度は高いが、<strong>監視スタック自身が同じホストの CPU を数十%消費する</strong>。3コンテナで CPU を奪い合う状況を測りたいのに、観測装置が第4の競合者として混ざる。</dd>
+  <dt>対処</dt>
+  <dd><code>docker stats</code> を1秒間隔でポーリングして CSV に落とすだけの薄いサンプラに切り替えた。精度は落ちるが観測コストが最小で、比較の公平性を壊さない。この判断理由を <code>collector.py</code> の冒頭コメントに残し、「精度が必要になったら差し替える」ことを明記した。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 計測系の道具選びは「精度が高いほど良い」ではない。<strong>観測が対象に与える影響</strong>を勘定に入れて、目的に対して十分な最小の手段を選ぶ。</p>
+</div>
+
+<div class="case">
+<h3>7. ブラウザ実行テストの CORS を、計測対象サーバに手を入れずに解決した<span class="tag">設計</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>ブラウザから3サービスを叩くテスト画面を作ろうとしたが、ポートが違うため CORS で弾かれる。素直に対処するなら3サービスすべてに CORS ヘッダ処理と OPTIONS ハンドラを足すことになる。</dd>
+  <dt>なぜ問題か</dt>
+  <dd>計測対象のハンドラに<strong>ベンチマーク本来の仕様に無い処理を足すことになる</strong>。3言語それぞれで実装コストが違うため、その差がそのまま性能差として混入する。</dd>
+  <dt>対処</dt>
+  <dd>nginx のリバースプロキシを1本立て、3サービスを <code>/api/py/</code> <code>/api/go/</code> <code>/api/rb/</code> として同一オリジン配下にぶら下げた。CORS 自体が不要になる。さらに Compose の <code>profiles: ["tools"]</code> でこのコンテナを分離し、<strong>本計測時には起動しない</strong>ようにした（nginx が CPU を分け合うと比較が歪むため）。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 計測対象に手を入れずに済ませる方法を先に探す。<strong>「テストのために本体を変える」は最後の手段</strong>で、特にベンチマークでは変更そのものが結果を汚す。</p>
+</div>
+
+<div class="case">
+<h3>8. CPU 使用率の平均が、アイドル区間に薄められて実態を表さなかった<span class="tag">計測</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>資源サンプラは起動待ち・安定待ち・負荷終了後もサンプルを取り続けるため、単純平均を出すとアイドル区間（CPU 数%）に引っ張られ、負荷中の実際の消費が読めなくなった。</dd>
+  <dt>対処</dt>
+  <dd>CPU 使用率のサンプルを降順に並べ、<strong>上位50%だけを平均</strong>する方式にした。負荷区間はサンプル全体のおおむね半分以上を占めるため、アイドル区間を機械的に除外できる。この処理の意図をコードコメントとレポート本文の両方に書き、読み手が「単純平均ではない」ことを誤解しないようにした。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 集計方法は数値と同じくらい重要な情報。<strong>加工したなら、加工したことをレポートの読み手に伝える</strong>。伝えない集計は誤読を生む。</p>
+</div>
+
+<div class="case">
+<h3>9. クラウドセッションに Docker デーモンが無く、実測ができなかった<span class="tag">環境</span></h3>
+<dl>
+  <dt>起きたこと</dt>
+  <dd>開発を行ったクラウドセッションには <code>docker</code> コマンドはあるがデーモンが動いておらず、コンテナのビルドも起動もできなかった。Python の FastAPI も Ruby の Sinatra も未導入で、サーバを直接起動しての確認もできない。</dd>
+  <dt>対処</dt>
+  <dd>検証を2層に分けた。<strong>Docker を必要としない層</strong>（3言語の計算ロジックの一致）を切り出し、その環境で実際に走らせて Go・Ruby・Python すべてで期待値との完全一致を確認した。Docker を必要とする層（性能計測そのもの）は PC 実機の作業と明示的に位置づけ、要件定義と README の両方に実行場所の分離表を書いた。</dd>
+  <dt>結果</dt>
+  <dd>クラウド側で保証できたこと: 3言語の全構文、計算ロジックの完全一致（署名・丸め・ソート順を含む）、バリデーション挙動、レポート生成器の動作（合成データで検証）。<br>
+  PC 実機に残したこと: イメージビルド、負荷計測、ブラウザ実行テスト。</dd>
+</dl>
+<p class="lesson"><strong>学び:</strong> 環境の制約は「できない」で止めず、<strong>できる検証とできない検証に分解する</strong>。分解できれば、制約のある環境でも品質の大半は先に確保できる。そして「どこまで検証済みか」を文書に残しておけば、実機作業者は残りだけに集中できる。</p>
+</div>
+
+<h2>設計判断の記録（採用しなかった案とその理由）</h2>
+<table>
+  <thead><tr><th>検討した案</th><th>不採用の理由</th></tr></thead>
+  <tbody>
+    <tr><td>各言語で最速のライブラリ構成にする（orjson、Cアクセラレータ等）</td><td>「その言語で普通に商用APIを書いたらどうなるか」を知りたいため。最速構成の比較は別の問いであり、混ぜると結論が曖昧になる。</td></tr>
+    <tr><td>Python 側で pydantic の自動バリデーションを使う</td><td>Go / Ruby は手動でJSONを解釈しており、Python だけフレームワーク機能を使うと処理内容が変わる。公平性のため3言語とも手動解釈に統一した。</td></tr>
+    <tr><td>PostgreSQL を挟んで I/O 集約の負荷も同時に測る</td><td>DB がボトルネックになると3言語とも同じ数値に収束し、言語差が見えなくなる。まず CPU + JSON + 並行処理の比較を確定させてから、別シナリオとして追加する。</td></tr>
+    <tr><td>k6 ではなく各言語で負荷生成スクリプトを書く</td><td>負荷生成側の性能差が計測に混入する。負荷元は3言語すべてに対して同一でなければならない。</td></tr>
+    <tr><td>cAdvisor + Prometheus + Grafana で資源監視</td><td>監視スタック自身が CPU を消費し、比較を歪める（課題6）。</td></tr>
+    <tr><td>計測結果をリポジトリにコミットする</td><td>実行環境ごとに変わる生成物であり、条件の違う結果が混在すると誤った比較を生む。<code>.gitignore</code> し、共有はレポート単体で行う。</td></tr>
+  </tbody>
+</table>
+
+<h2>次にやること</h2>
+<ol>
+  <li><strong>PC 実機で基準測定（P4）。</strong> 既定パラメータで <code>make bench</code> を3回実行し、ばらつきの幅を確認する。</li>
+  <li><strong>感度分析（P5）。</strong> 基準測定で差が出た軸に絞って <code>rounds</code> / <code>items</code> / <code>vus</code> を振る。差が出なかった軸を振っても情報は増えない。</li>
+  <li><strong>結果の記録。</strong> 各条件の <code>report.html</code> と、そこから読み取った判断を Notion に残す。</li>
+  <li><strong>本ドキュメントの更新。</strong> 実測フェーズで新たに判明した課題を追記する。実測でしか出てこない問題（サーマルスロットリング、ホスト側のばらつき等）は必ずある。</li>
+</ol>
+
+</main>
+</body>
+</html>
